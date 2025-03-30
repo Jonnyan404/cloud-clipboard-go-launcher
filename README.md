@@ -1,5 +1,6 @@
 ﻿# cloud-clipboard-go 启动器
 > 为 [cloud-clipboard-go](https://github.com/Jonnyan404/cloud-clipboard-go) 制作的启动器，方便不想或不会使用终端的用户
+
 > 基于 https://github.com/songquanpeng/gofile-launcher 项目修改而来
 
 <p>
@@ -30,8 +31,9 @@
 直接双击 cloud-clipboard-go-launcher.exe 运行。
 
 ### macOS 用户
-1. 给执行权限：`chmod u+x cloud-clipboard-go-launcher-macos`；
-2. 之后直接双击运行 cloud-clipboard-go-launcher-macos 或在终端中运行都可。
+1. 下载`dmg`或者`*-macos.zip`之后安装并运行；
+2. 如遇权限问题,在`系统设置`-->`隐私与安全性`-->`安全性`处,允许运行即可。或者命令行执行`xattr -cr /Applications/cloud-clipboard-go.app`
+
 
 ### Linux 用户
 同上，区别在于文件名换成 `cloud-clipboard-go-launcher`。
