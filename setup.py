@@ -6,8 +6,8 @@ OPTIONS = {
     'argv_emulation': True,
     'iconfile': 'icon.png',
     'plist': {
-        'CFBundleName': 'Cloud Clipboard',
-        'CFBundleDisplayName': 'Cloud Clipboard',
+        'CFBundleName': 'cloud-clipboard-go',
+        'CFBundleDisplayName': 'cloud-clipboard-go',
         'CFBundleIdentifier': 'com.jonnyan404.cloudclipboard',
         'CFBundleVersion': 'v0.0.0',  # 将在构建时被替换为实际版本
         'CFBundleShortVersionString': 'v0.0.0',  # 将在构建时被替换为实际版本
@@ -18,7 +18,7 @@ OPTIONS = {
 
 setup(
     app=APP,
-    name='Cloud Clipboard',
+    name='cloud-clipboard-go',
     data_files=DATA_FILES,
     options={'py2app': OPTIONS},
     setup_requires=['py2app'],

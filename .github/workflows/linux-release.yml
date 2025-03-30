@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - '*'
+
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -21,20 +25,52 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y upx python3-dev libxcb-xinerama0
+          sudo apt-get install -y upx python3-dev \
+            libxcb-xinerama0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xkb1 \
+            libxkbcommon-x11-0 \
+            libegl1 \
+            libqt5gui5
           
       - name: Build
         run: |
-          sed -i "s/v0.0.0/$(git describe --tags)/g" ./main.py
+          VERSION=$(git describe --tags)
+          sed -i "s/v0.0.0/$VERSION/g" ./main.py
+          
           pip install -r requirements.txt
+          pip install pyinstaller pyqt5
+          
+          # 生成必要的 UI 文件
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
-          pyinstaller --noconsole -F ./main.py --icon icon.png -n cloud-clipboard-go-launcher
+          
+          # 构建可执行文件 - 添加所有缺失的库
+          pyinstaller --noconsole -F \
+            --add-data="icon.png:." \
+            --hidden-import=PyQt5.QtCore \
+            --hidden-import=PyQt5.QtGui \
+            --hidden-import=PyQt5.QtWidgets \
+            --icon=icon.png \
+            -n CloudClip \
+            ./main.py
+          
+      - name: Package for Linux
+        run: |
+          VERSION=$(git describe --tags)
+          cd dist
+          tar -czvf "CloudClip-$VERSION-Linux.tar.gz" CloudClip
+          cd ..
           
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/cloud-clipboard-go-launcher
+          files: |
+            dist/CloudClip
+            dist/CloudClip-*-Linux.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
