@@ -110,7 +110,7 @@
       <item>
        <widget class="QLabel" name="label_4">
         <property name="text">
-         <string>指定外部前端文件路径：</string>
+         <string>指定外部前端文件目录：</string>
         </property>
        </widget>
       </item>
