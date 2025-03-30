@@ -1,4 +1,4 @@
-﻿# cloud-clipboard-go-go 启动器
+﻿# cloud-clipboard-go 启动器
 > 为 [cloud-clipboard-go](https://github.com/Jonnyan404/cloud-clipboard-go) 制作的启动器，方便不想或不会使用终端的用户
 > 基于 https://github.com/songquanpeng/gofile-launcher 项目修改而来
 

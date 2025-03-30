@@ -19,7 +19,7 @@ from utils import get_ips, system_related_secret, get_latest_version
 # 修改文件名逻辑
 base_filename = "cloud-clipboard-go"
 config_file = "cloud-clipboard-go-launcher.ini"
-version = "v4.0"
+version = "v0.0.0"
 is_windows = os.name == "nt"
 use_shell = is_windows
 
