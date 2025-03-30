@@ -56,21 +56,21 @@ jobs:
             --hidden-import=PyQt5.QtGui \
             --hidden-import=PyQt5.QtWidgets \
             --icon=icon.png \
-            -n CloudClip \
+            -n cloud-clipboard-go \
             ./main.py
           
       - name: Package for Linux
         run: |
           VERSION=$(git describe --tags)
           cd dist
-          tar -czvf "CloudClip-$VERSION-Linux.tar.gz" CloudClip
+          tar -czvf "cloud-clipboard-go-$VERSION-Linux.tar.gz" cloud-clipboard-go
           cd ..
           
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/CloudClip
-            dist/CloudClip-*-Linux.tar.gz
+            dist/cloud-clipboard-go
+            dist/cloud-clipboard-go-*-Linux.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
