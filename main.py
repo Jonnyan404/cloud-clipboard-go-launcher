@@ -8,7 +8,7 @@ import platform
 import requests
 from PyQt5.QtCore import pyqtSlot, Qt, QSize
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QSystemTrayIcon, QMenu
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QLineEdit
 
 # 先创建QApplication实例（必须放在最前面）
 app = QApplication(sys.argv)
@@ -135,6 +135,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.fileLineEdit.textChanged.connect(lambda v: self.update_config("file", v))
         if 'video' in self.config['DEFAULT']:
             self.videoLineEdit.setText(self.config['DEFAULT']['video'])
+
+        # 设置密码输入框为密码模式（显示为星号）
+        self.videoLineEdit.setEchoMode(QLineEdit.Password)
+        # 添加密码可见状态变量
+        self.password_visible = False
+
         self.videoLineEdit.textChanged.connect(lambda v: self.update_config("video", v))
         self.aboutMsgBox = QMessageBox()
         self.aboutMsgBox.setFont(self.font())
@@ -178,7 +184,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 file_path = self.fileLineEdit.text()
                 video_path = self.videoLineEdit.text()
                 self.gofile = subprocess.Popen(
-                    [f"{exec_filename}", "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-static",
+                    [f"{exec_filename}", "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-auth",
                      f"{video_path}"], shell=use_shell, cwd="./")
                 self.statusbar.showMessage("服务已启动")
                 self.startBtn.setText("终止")
@@ -197,16 +203,42 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @pyqtSlot()
     def on_fileChooseBtn_clicked(self):
-        path = QFileDialog.getExistingDirectory(self, "选择要分享的文件的目录", ".")
-        self.fileLineEdit.setText(path)
-        self.statusbar.showMessage(f"已选择：{path}")
+        path, _ = QFileDialog.getOpenFileName(self, "选择配置文件", ".", "配置文件 (*.json *.yaml *.yml *.conf);;所有文件 (*)")
+        if path:
+            self.fileLineEdit.setText(path)
+            self.statusbar.showMessage(f"已选择：{path}")
 
     @pyqtSlot()
     def on_videoChooseBtn_clicked(self):
-        path = QFileDialog.getExistingDirectory(self, "选择要分享的视频的目录", ".")
-        self.videoLineEdit.setText(path)
-        self.statusbar.showMessage(f"已选择：{path}")
-
+        from PyQt5.QtWidgets import QLineEdit
+        
+        # 获取当前密码
+        current_password = self.videoLineEdit.text()
+        
+        if not current_password:
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self,
+                "提示",
+                "未设置密码，请先在输入框中输入密码",
+                QMessageBox.Ok
+            )
+            return
+        
+        # 切换密码显示/隐藏状态
+        self.password_visible = not self.password_visible
+        
+        if self.password_visible:
+            # 显示密码
+            self.videoLineEdit.setEchoMode(QLineEdit.Normal)
+            self.videoChooseBtn.setText("隐藏密码")
+            self.statusbar.showMessage("密码已显示")
+        else:
+            # 隐藏密码
+            self.videoLineEdit.setEchoMode(QLineEdit.Password)
+            self.videoChooseBtn.setText("查看密码")
+            self.statusbar.showMessage("密码已隐藏")
+        
     @pyqtSlot()
     def on_aboutBtn_clicked(self):
         self.aboutMsgBox.show()
