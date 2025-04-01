@@ -140,31 +140,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.videoLineEdit.setEchoMode(QLineEdit.Password)
         # 添加密码可见状态变量
         self.password_visible = False
-        # 在初始化函数中，填充IP地址后添加
-        # 添加明确的样式表确保ComboBox在macOS上可见
-        stylesheet = """
-        QComboBox {
-            background-color: white; 
-            color: black;
-            border: 1px solid gray;
-            padding: 1px 18px 1px 3px;
-            opacity: 1;
-        }
-        QComboBox::drop-down {
-            subcontrol-origin: padding;
-            subcontrol-position: top right;
-            width: 15px;
-            border-left: 1px solid gray;
-        }
-        QComboBox QAbstractItemView {
-            background-color: white;
-            selection-background-color: lightgray;
-            selection-color: black;
-            border: 1px solid gray;
-        }
-        """
-        self.hostComboBox.setStyleSheet(stylesheet)
-
+        self.hostComboBox.setStyleSheet("QComboBox { background-color: white; }")
+        
         self.videoLineEdit.textChanged.connect(lambda v: self.update_config("video", v))
         self.aboutMsgBox = QMessageBox()
         self.aboutMsgBox.setFont(self.font())
