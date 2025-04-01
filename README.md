@@ -31,8 +31,8 @@
 直接双击 cloud-clipboard-go-launcher.exe 运行。
 
 ### macOS 用户
-1. 下载`dmg`或者`*-macos.zip`之后安装并运行；
-2. 如遇权限问题,在`系统设置`-->`隐私与安全性`-->`安全性`处,允许运行即可。或者命令行执行`xattr -cr /Applications/cloud-clipboard-go.app`
+1. 下载`*.dmg`或者`*-macos.zip`之后安装并运行；
+2. 命令行执行`xattr -cr /Applications/cloud-clipboard-go.app`
 
 
 ### Linux 用户
