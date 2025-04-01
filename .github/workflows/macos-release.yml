@@ -26,8 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext create-dmg
-          brew link gettext --force
+          brew install create-dmg
           
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -36,7 +35,7 @@ jobs:
           
       - name: Build App
         run: |
-          # 根据触发方式选择版本号
+          # 设置版本号
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
           else
@@ -46,15 +45,24 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           
           sed -i "" "s/v0.0.0/$VERSION/g" ./main.py
-          sed -i "" "s/v0.0.0/$VERSION/g" ./setup.py
           
           pip install -r requirements.txt
-          pip install py2app
+          pip install pyinstaller
           
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
           
-          python setup.py py2app
+          # 使用 PyInstaller 构建 macOS 应用
+          pyinstaller --windowed --onedir \
+            --add-data="icon.png:." \
+            --add-data="main.ui:." \
+            --add-data="resource.qrc:." \
+            --hidden-import=PyQt5.QtCore \
+            --hidden-import=PyQt5.QtGui \
+            --hidden-import=PyQt5.QtWidgets \
+            --icon=icon.png \
+            -n "cloud-clipboard-go" \
+            ./main.py
           
       - name: Create DMG
         run: |
@@ -81,9 +89,7 @@ jobs:
           
       - name: Release
         uses: softprops/action-gh-release@v1
-        # 移除条件检查，允许手动触发和标签触发都能创建发布
         with:
-          # 为手动触发添加标签名
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           files: |
             cloud-clipboard-go-*.dmg

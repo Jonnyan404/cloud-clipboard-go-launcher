@@ -6,9 +6,9 @@ from threading import Thread
 import platform
 
 import requests
-from PyQt5.QtCore import pyqtSlot, Qt, QSize, QPoint
+from PyQt5.QtCore import pyqtSlot, Qt, QSize
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QLineEdit
 
 # 先创建QApplication实例（必须放在最前面）
 app = QApplication(sys.argv)
@@ -114,48 +114,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gofile = None
         self.config = configparser.ConfigParser()
         self.config.read(config_file)
-
-        # 获取IP地址列表 
         self.ips = get_ips()
         self.ips.insert(0, "localhost")
-        
-        # 保存当前选择的IP（如果配置中有）
-        selected_ip = "localhost"
-        if 'host' in self.config['DEFAULT']:
-            selected_ip = self.config['DEFAULT']['host']
-            if selected_ip not in self.ips:
-                selected_ip = "localhost"
-                
-        # ===== 替换ComboBox部分开始 =====
-        # 获取ComboBox的父布局
-        parent_layout = self.hostComboBox.parent().layout()
-        
-        # 创建新按钮
-        from PyQt5.QtWidgets import QPushButton, QMenu
-        
-        # 创建替换按钮
-        self.hostButton = QPushButton(selected_ip)
-        self.hostButton.setMinimumWidth(150)  # 与UI中相同的宽度
-        
-        # 在布局中替换控件
-        for i in range(parent_layout.count()):
-            if parent_layout.itemAt(i).widget() == self.hostComboBox:
-                parent_layout.removeItem(parent_layout.itemAt(i))
-                self.hostComboBox.setParent(None)
-                self.hostComboBox.deleteLater()
-                parent_layout.insertWidget(i, self.hostButton)
-                break
-        
-        # 创建下拉菜单并添加选项
-        self.hostMenu = QMenu(self)
         for ip in self.ips:
-            self.hostMenu.addAction(ip)
-        
-        # 连接信号
-        self.hostButton.clicked.connect(self.showHostMenu)
-        self.hostMenu.triggered.connect(self.onHostSelected)
-        # ===== 替换ComboBox部分结束 =====
-
+            self.hostComboBox.addItem(ip, ip)
+        if 'host' in self.config['DEFAULT']:
+            host = self.config['DEFAULT']['host']
+            if host in self.ips:
+                idx = self.ips.index(host)
+            else:
+                idx = 0
+            self.hostComboBox.setCurrentIndex(idx)
+        self.hostComboBox.currentIndexChanged.connect(lambda v: self.update_config("host", self.ips[v]))
         if 'port' in self.config['DEFAULT']:
             self.portSpinBox.setValue(int(self.config['DEFAULT']['port']))
         self.portSpinBox.textChanged.connect(lambda v: self.update_config("port", v))
@@ -209,7 +179,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.gofile is None:
             if os.path.exists(f"./{filename}"):
                 port = self.portSpinBox.text()
-                host = self.hostButton.text()
+                host = self.hostComboBox.currentText()
                 file_path = self.fileLineEdit.text()
                 video_path = self.videoLineEdit.text()
                 self.gofile = subprocess.Popen(
@@ -296,19 +266,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 return
         worker = ThreadDownloader(self.statusbar, self.updateBtn)
         worker.start()
-
-    def showHostMenu(self):
-        """显示IP地址选择菜单"""
-        # 在按钮下方显示菜单
-        self.hostMenu.exec_(self.hostButton.mapToGlobal(
-            QPoint(0, self.hostButton.height())))
-
-    def onHostSelected(self, action):
-        """处理IP地址选择"""
-        ip = action.text()
-        self.hostButton.setText(ip)
-        self.update_config("host", ip)
-        self.statusbar.showMessage(f"已选择服务监听地址: {ip}")
 
 
 class ThreadDownloader(Thread):
