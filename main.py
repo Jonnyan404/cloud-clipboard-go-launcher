@@ -140,7 +140,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.videoLineEdit.setEchoMode(QLineEdit.Password)
         # 添加密码可见状态变量
         self.password_visible = False
-        self.hostComboBox.setStyleSheet("QComboBox { background-color: white; }")
 
         self.videoLineEdit.textChanged.connect(lambda v: self.update_config("video", v))
         self.aboutMsgBox = QMessageBox()
