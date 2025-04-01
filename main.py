@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox,
 
 # 先创建QApplication实例（必须放在最前面）
 app = QApplication(sys.argv)
-
+app.setStyle("macintosh") 
 from ui import Ui_MainWindow
 from utils import get_ips, system_related_secret, get_latest_version
 
@@ -141,7 +141,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 添加密码可见状态变量
         self.password_visible = False
         self.hostComboBox.setStyleSheet("QComboBox { background-color: white; }")
-        
+
         self.videoLineEdit.textChanged.connect(lambda v: self.update_config("video", v))
         self.aboutMsgBox = QMessageBox()
         self.aboutMsgBox.setFont(self.font())
