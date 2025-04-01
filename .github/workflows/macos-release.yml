@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - '*'
+        # 添加手动触发选项
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: v1.0)'
+        required: true
+        default: 'v4.0'
 
 permissions:
   contents: write

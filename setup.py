@@ -16,7 +16,7 @@ OPTIONS = {
     'packages': ['PyQt5'],
     'includes': ['PyQt5.QtCore', 'PyQt5.QtGui', 'PyQt5.QtWidgets'],
     'qt_plugins': ['styles', 'platforms/libqcocoa.dylib'],
-    'exclude': ['matplotlib', 'pandas', 'numpy'],  # 排除不需要的大型包
+    'excludes': ['matplotlib', 'pandas', 'numpy'],  # 排除不需要的大型包
 }
 
 setup(
