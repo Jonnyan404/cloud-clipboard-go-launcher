@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - '*'
-        # 添加手动触发选项
   workflow_dispatch:
     inputs:
       version:
@@ -37,27 +36,31 @@ jobs:
           
       - name: Build App
         run: |
-          VERSION=$(git describe --tags)
+          # 根据触发方式选择版本号
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(git describe --tags)
+          fi
+          
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          
           sed -i "" "s/v0.0.0/$VERSION/g" ./main.py
           sed -i "" "s/v0.0.0/$VERSION/g" ./setup.py
           
           pip install -r requirements.txt
           pip install py2app
           
-          # 生成必要的 UI 文件
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
           
-          # 构建 .app 包
           python setup.py py2app
           
       - name: Create DMG
         run: |
-          VERSION=$(git describe --tags)
           mkdir -p staging
           cp -r "dist/cloud-clipboard-go.app" staging/
           
-          # 创建 DMG 文件
           create-dmg \
             --volname "cloud-clipboard-go" \
             --volicon "icon.png" \
@@ -67,20 +70,21 @@ jobs:
             --icon "cloud-clipboard-go.app" 175 190 \
             --hide-extension "cloud-clipboard-go.app" \
             --app-drop-link 425 190 \
-            "cloud-clipboard-go-$VERSION.dmg" \
+            "cloud-clipboard-go-${{ env.VERSION }}.dmg" \
             staging/
             
       - name: Create ZIP backup
         run: |
-          VERSION=$(git describe --tags)
           cd dist
-          zip -r "cloud-clipboard-go-$VERSION-macOS.zip" "cloud-clipboard-go.app"
+          zip -r "cloud-clipboard-go-${{ env.VERSION }}-macOS.zip" "cloud-clipboard-go.app"
           cd ..
           
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        # 移除条件检查，允许手动触发和标签触发都能创建发布
         with:
+          # 为手动触发添加标签名
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           files: |
             cloud-clipboard-go-*.dmg
             dist/cloud-clipboard-go-*-macOS.zip
