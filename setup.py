@@ -9,14 +9,11 @@ OPTIONS = {
         'CFBundleName': 'cloud-clipboard-go',
         'CFBundleDisplayName': 'cloud-clipboard-go',
         'CFBundleIdentifier': 'com.jonnyan404.cloudclipboard',
-        'CFBundleVersion': 'v0.0.0',
-        'CFBundleShortVersionString': 'v0.0.0',
+        'CFBundleVersion': 'v0.0.0',  # 将在构建时被替换为实际版本
+        'CFBundleShortVersionString': 'v0.0.0',  # 将在构建时被替换为实际版本
         'NSHighResolutionCapable': True,
     },
     'packages': ['PyQt5'],
-    'includes': ['PyQt5.QtCore', 'PyQt5.QtGui', 'PyQt5.QtWidgets'],
-    'qt_plugins': ['styles', 'platforms/libqcocoa.dylib'],
-    'excludes': ['matplotlib', 'pandas', 'numpy'],  # 排除不需要的大型包
 }
 
 setup(
