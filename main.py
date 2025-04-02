@@ -392,6 +392,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 显示对话框
         dialog.exec_()
 
+    @pyqtSlot()
+    def on_openWebBtn_clicked(self):
+        """打开网页版界面"""
+        import webbrowser
+        
+        host = self.hostComboBox.currentText()
+        port = self.portSpinBox.text()
+        
+        # 如果主机是localhost或0.0.0.0，使用127.0.0.1代替
+        if host in ["localhost", "0.0.0.0"]:
+            host = "127.0.0.1"
+            
+        url = f"http://{host}:{port}"
+        self.statusbar.showMessage(f"正在打开 {url}")
+        
+        # 打开默认浏览器
+        webbrowser.open(url)
+
 
 class ThreadDownloader(Thread):
     def __init__(self, statusbar, updateBtn, main_window=None):

@@ -31,6 +31,7 @@
 直接双击 cloud-clipboard-go-launcher.exe 运行。
 
 ### macOS 用户
+
 1. 下载`*.dmg`或者`*-macos.zip`之后安装并运行；
 2. 命令行执行`xattr -cr /Applications/cloud-clipboard-go.app`
 

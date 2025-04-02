@@ -80,6 +80,9 @@ class Ui_MainWindow(object):
         self.updateBtn = QtWidgets.QPushButton(self.centralwidget)
         self.updateBtn.setObjectName("updateBtn")
         self.horizontalLayout_4.addWidget(self.updateBtn)
+        self.openWebBtn = QtWidgets.QPushButton(self.centralwidget)
+        self.openWebBtn.setObjectName("openWebBtn")
+        self.horizontalLayout_4.addWidget(self.openWebBtn)
         self.startBtn = QtWidgets.QPushButton(self.centralwidget)
         self.startBtn.setObjectName("startBtn")
         self.horizontalLayout_4.addWidget(self.startBtn)
@@ -104,5 +107,6 @@ class Ui_MainWindow(object):
         self.videoChooseBtn.setText(_translate("MainWindow", "查看密码"))
         self.aboutBtn.setText(_translate("MainWindow", "关于"))
         self.updateBtn.setText(_translate("MainWindow", "检查更新"))
+        self.openWebBtn.setText(_translate("MainWindow", "打开网站"))
         self.startBtn.setText(_translate("MainWindow", "启动"))
 import resource_rc
