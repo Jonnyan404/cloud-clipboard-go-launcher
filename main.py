@@ -183,84 +183,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 host = self.hostComboBox.currentText()
                 file_path = self.fileLineEdit.text()
                 video_path = self.videoLineEdit.text()
-                
-                # macOS 特殊处理 - 完全重写
-                if sys.platform == 'darwin':
-                    # 检查是否是目录（.app 包）
-                    if os.path.isdir(f"./{filename}"):
-                        # 使用 macOS 原生方法启动应用
-                        app_path = os.path.abspath(f"./{filename}")
-                        
-                        # 使用环境变量传递参数，避免参数解析问题
-                        env = os.environ.copy()
-                        env['CCG_PORT'] = port
-                        env['CCG_HOST'] = host
-                        env['CCG_CONFIG'] = file_path
-                        env['CCG_AUTH'] = video_path
-                        
-                        # 先检查进程是否已经在运行
-                        try:
-                            result = subprocess.run(
-                                ["pgrep", "-f", os.path.basename(filename)],
-                                capture_output=True, text=True
-                            )
-                            if result.stdout.strip():
-                                # 如果找到了进程，先终止它
-                                subprocess.run(["pkill", "-f", os.path.basename(filename)])
-                                import time
-                                time.sleep(1)  # 给点时间让进程终止
-                        except Exception as e:
-                            print(f"检查进程时出错: {e}")
-                        
-                        # 使用 nohup 确保进程在后台运行且不显示窗口
-                        cmd = [
-                            "bash", "-c", 
-                            f"cd {os.getcwd()} && "
-                            f"nohup {app_path}/Contents/MacOS/{os.path.basename(app_path).rstrip('.app')} "
-                            f"-port {port} -host {host} -config {file_path} -auth {video_path} "
-                            f"> /tmp/cloud-clipboard.log 2>&1 & echo $!"
-                        ]
-                        
-                        print(f"执行命令: {' '.join(cmd)}")
-                        
-                        # 获取进程ID
-                        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        pid = proc.stdout.decode('utf-8').strip()
-                        
-                        if pid and pid.isdigit():
-                            # 存储进程ID，以便稍后终止
-                            self.gofile_pid = int(pid)
-                            self.gofile = True  # 标记进程已启动
-                        else:
-                            print(f"启动失败: {proc.stderr.decode('utf-8')}")
-                            self.statusbar.showMessage("服务启动失败")
-                            return
-                    else:
-                        # 普通二进制，使用传统方式
-                        cmd = [
-                            "bash", "-c",
-                            f"cd {os.getcwd()} && "
-                            f"nohup ./{filename} -port {port} -host {host} "
-                            f"-config {file_path} -auth {video_path} "
-                            f"> /tmp/cloud-clipboard.log 2>&1 & echo $!"
-                        ]
-                        
-                        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        pid = proc.stdout.decode('utf-8').strip()
-                        
-                        if pid and pid.isdigit():
-                            self.gofile_pid = int(pid)
-                            self.gofile = True
-                        else:
-                            self.statusbar.showMessage("服务启动失败")
-                            return
-                else:
-                    # 其他平台保持不变
-                    self.gofile = subprocess.Popen(
-                        [f"{exec_filename}", "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-auth", f"{video_path}"],
-                        shell=use_shell,
-                        cwd="./")
-                        
+                self.gofile = subprocess.Popen(
+                    [f"{exec_filename}", "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-auth",
+                     f"{video_path}"], shell=use_shell, cwd="./")
                 self.statusbar.showMessage("服务已启动")
                 self.startBtn.setText("终止")
             else:
@@ -268,32 +193,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             if os.name == "nt":
                 subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=self.gofile.pid), shell=True)
-            elif sys.platform == 'darwin':
-                # 对于 macOS，使用存储的 PID
-                if hasattr(self, 'gofile_pid'):
-                    try:
-                        os.kill(self.gofile_pid, 9)
-                        subprocess.run(["pkill", "-f", os.path.basename(filename)])
-                    except Exception as e:
-                        print(f"终止进程时出错: {e}")
             else:
-                # 在其他Unix系统上使用更可靠的终止方法
-                import signal
-                try:
-                    # 先尝试优雅关闭
-                    self.gofile.send_signal(signal.SIGTERM)
-                    # 给一点时间关闭
-                    import time
-                    time.sleep(0.5)
-                    # 如果还在运行，强制关闭
-                    if self.gofile.poll() is None:
-                        self.gofile.kill()
-                except Exception as e:
-                    print(f"终止进程时出错: {e}")
-                    
+                # Not tested.
+                # https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
+                self.gofile.kill()
             self.gofile = None
-            if hasattr(self, 'gofile_pid'):
-                delattr(self, 'gofile_pid')
             self.statusbar.showMessage("服务已终止")
             self.startBtn.setText("启动")
 

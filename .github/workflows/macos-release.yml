@@ -44,25 +44,39 @@ jobs:
           
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           
+          # 更新应用版本号
           sed -i "" "s/v0.0.0/$VERSION/g" ./main.py
+          sed -i "" "s/v0.0.0/$VERSION/g" ./setup.py
           
+          # 安装依赖
           pip install -r requirements.txt
           pip install pyinstaller
+          pip install py2app
           
+          # 生成UI文件
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
           
-          # 使用 PyInstaller 构建 macOS 应用
-          pyinstaller --windowed --onedir \
-            --add-data="icon.png:." \
-            --add-data="main.ui:." \
-            --add-data="resource.qrc:." \
-            --hidden-import=PyQt5.QtCore \
-            --hidden-import=PyQt5.QtGui \
-            --hidden-import=PyQt5.QtWidgets \
-            --icon=icon.png \
-            -n "cloud-clipboard-go" \
-            ./main.py
+          # 使用py2app打包
+          python setup.py py2app
+          
+          # 显示应用内容以便调试
+          ls -la dist/cloud-clipboard-go.app/Contents/
+          ls -la dist/cloud-clipboard-go.app/Contents/MacOS/
+          ls -la dist/cloud-clipboard-go.app/Contents/Resources/
+
+          # # 使用 PyInstaller 构建 macOS 应用
+          # pyinstaller --windowed --onedir \
+          #   --add-data="icon.png:." \
+          #   --add-data="main.ui:." \
+          #   --add-data="resource.qrc:." \
+          #   --hidden-import=PyQt5.QtCore \
+          #   --hidden-import=PyQt5.QtGui \
+          #   --hidden-import=PyQt5.QtWidgets \
+          #   --icon=icon.png \
+          #   -n "cloud-clipboard-go" \
+          #   ./main.py
+
           
       - name: Create DMG
         run: |
