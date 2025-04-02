@@ -249,31 +249,64 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # 在 macOS 上使用替代方法获取版本
             if sys.platform == 'darwin' and getattr(sys, 'frozen', False):
                 # 如果是打包的应用程序，直接使用应用自身的版本号
-                current_version = "v" + version.lstrip("v")  # 确保版本号格式一致
-                print(f"使用应用内置版本: {current_version}")
+                current_version = version.lstrip("vV")  # 移除前缀
+                print(f"使用应用内置版本: v{current_version}")
             else:
                 # 在其他平台上保持原来的行为
                 process = subprocess.Popen([f"{exec_filename}", '-v'], stdout=subprocess.PIPE, shell=use_shell, cwd="./")
                 output = process.communicate()[0]
-                current_version = output.decode('utf-8')
-                current_version = current_version.rstrip("\n")
+                current_version = output.decode('utf-8').strip().lstrip("vV")
             
             self.statusbar.showMessage(f"正在请求 GitHub 服务器查询当前最新版本 ...")
             core_latest_version = get_latest_version("cloud-clipboard-go")
+            
             if core_latest_version is None:
                 self.statusbar.showMessage(f"无法连接到 GitHub 服务器")
                 return
-            if core_latest_version == current_version:
+                
+            # 标准化 GitHub 版本号
+            core_latest_clean = core_latest_version.lstrip("vV")
+            
+            print(f"本地版本: {current_version}, GitHub版本: {core_latest_clean}")
+            
+            # 使用标准化后的版本号比较
+            if current_version == core_latest_clean:
                 self.statusbar.showMessage(f"cloud-clipboard-go 已是最新版：{core_latest_version}")
                 launcher_latest_version = get_latest_version("cloud-clipboard-go-launcher")
-                if launcher_latest_version is not None and launcher_latest_version != version:
-                    self.statusbar.showMessage(
-                        f"cloud-clipboard-go 已是最新版：{core_latest_version}，启动器更新可用：{version}->{launcher_latest_version}")
-                    return
+                
+                if launcher_latest_version is not None:
+                    # 标准化启动器版本号
+                    launcher_current = version.lstrip("vV")
+                    launcher_latest = launcher_latest_version.lstrip("vV")
+                    
+                    print(f"启动器本地版本: {launcher_current}, GitHub版本: {launcher_latest}")
+                    
+                    if launcher_latest != launcher_current:
+                        self.statusbar.showMessage(
+                            f"cloud-clipboard-go 已是最新版：{core_latest_version}，启动器更新可用：{version}->{launcher_latest_version}")
+                        return
+                        
                 self.statusbar.showMessage(f"已是最新版：cloud-clipboard-go {core_latest_version} & 启动器 {version}")
                 return
-        worker = ThreadDownloader(self.statusbar, self.updateBtn)
-        worker.start()
+                
+            # 如果需要更新，显示确认对话框
+            reply = QMessageBox.question(
+                self, 
+                "发现新版本", 
+                f"当前版本: v{current_version}\n最新版本: {core_latest_version}\n\n是否要更新?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            
+            if reply == QMessageBox.Yes:
+                worker = ThreadDownloader(self.statusbar, self.updateBtn)
+                worker.start()
+            else:
+                self.statusbar.showMessage(f"更新已取消")
+        else:
+            # 如果本地文件不存在，直接下载
+            worker = ThreadDownloader(self.statusbar, self.updateBtn)
+            worker.start()
 
 
 class ThreadDownloader(Thread):
