@@ -184,28 +184,76 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 file_path = self.fileLineEdit.text()
                 video_path = self.videoLineEdit.text()
                 
-                # macOS 特殊处理
+                # macOS 特殊处理 - 完全重写
                 if sys.platform == 'darwin':
-                    # 如果是 .app 包，需要找到实际的可执行文件
-                    if os.path.isdir(f"./{filename}") and filename.endswith(".app"):
-                        # 查找实际的可执行文件，通常在 Contents/MacOS 下
-                        macos_exec = f"./{filename}/Contents/MacOS/{os.path.basename(filename.rstrip('.app'))}"
-                        if os.path.exists(macos_exec):
-                            exec_filename_real = macos_exec
-                        else:
-                            # 如果找不到，尝试与目录名相同的可执行文件
-                            exec_filename_real = f"./{filename}/Contents/MacOS/{os.path.basename(filename)}"
-                    else:
-                        # 普通二进制文件
-                        exec_filename_real = exec_filename
+                    # 检查是否是目录（.app 包）
+                    if os.path.isdir(f"./{filename}"):
+                        # 使用 macOS 原生方法启动应用
+                        app_path = os.path.abspath(f"./{filename}")
                         
-                    # 在 macOS 上始终使用 shell=False 来避免新窗口
-                    self.gofile = subprocess.Popen(
-                        [exec_filename_real, "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-auth", f"{video_path}"],
-                        shell=False,
-                        cwd="./",
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
+                        # 使用环境变量传递参数，避免参数解析问题
+                        env = os.environ.copy()
+                        env['CCG_PORT'] = port
+                        env['CCG_HOST'] = host
+                        env['CCG_CONFIG'] = file_path
+                        env['CCG_AUTH'] = video_path
+                        
+                        # 先检查进程是否已经在运行
+                        try:
+                            result = subprocess.run(
+                                ["pgrep", "-f", os.path.basename(filename)],
+                                capture_output=True, text=True
+                            )
+                            if result.stdout.strip():
+                                # 如果找到了进程，先终止它
+                                subprocess.run(["pkill", "-f", os.path.basename(filename)])
+                                import time
+                                time.sleep(1)  # 给点时间让进程终止
+                        except Exception as e:
+                            print(f"检查进程时出错: {e}")
+                        
+                        # 使用 nohup 确保进程在后台运行且不显示窗口
+                        cmd = [
+                            "bash", "-c", 
+                            f"cd {os.getcwd()} && "
+                            f"nohup {app_path}/Contents/MacOS/{os.path.basename(app_path).rstrip('.app')} "
+                            f"-port {port} -host {host} -config {file_path} -auth {video_path} "
+                            f"> /tmp/cloud-clipboard.log 2>&1 & echo $!"
+                        ]
+                        
+                        print(f"执行命令: {' '.join(cmd)}")
+                        
+                        # 获取进程ID
+                        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        pid = proc.stdout.decode('utf-8').strip()
+                        
+                        if pid and pid.isdigit():
+                            # 存储进程ID，以便稍后终止
+                            self.gofile_pid = int(pid)
+                            self.gofile = True  # 标记进程已启动
+                        else:
+                            print(f"启动失败: {proc.stderr.decode('utf-8')}")
+                            self.statusbar.showMessage("服务启动失败")
+                            return
+                    else:
+                        # 普通二进制，使用传统方式
+                        cmd = [
+                            "bash", "-c",
+                            f"cd {os.getcwd()} && "
+                            f"nohup ./{filename} -port {port} -host {host} "
+                            f"-config {file_path} -auth {video_path} "
+                            f"> /tmp/cloud-clipboard.log 2>&1 & echo $!"
+                        ]
+                        
+                        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        pid = proc.stdout.decode('utf-8').strip()
+                        
+                        if pid and pid.isdigit():
+                            self.gofile_pid = int(pid)
+                            self.gofile = True
+                        else:
+                            self.statusbar.showMessage("服务启动失败")
+                            return
                 else:
                     # 其他平台保持不变
                     self.gofile = subprocess.Popen(
@@ -220,8 +268,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             if os.name == "nt":
                 subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=self.gofile.pid), shell=True)
+            elif sys.platform == 'darwin':
+                # 对于 macOS，使用存储的 PID
+                if hasattr(self, 'gofile_pid'):
+                    try:
+                        os.kill(self.gofile_pid, 9)
+                        subprocess.run(["pkill", "-f", os.path.basename(filename)])
+                    except Exception as e:
+                        print(f"终止进程时出错: {e}")
             else:
-                # 在 Unix 系统上使用更可靠的终止方法
+                # 在其他Unix系统上使用更可靠的终止方法
                 import signal
                 try:
                     # 先尝试优雅关闭
@@ -236,6 +292,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     print(f"终止进程时出错: {e}")
                     
             self.gofile = None
+            if hasattr(self, 'gofile_pid'):
+                delattr(self, 'gofile_pid')
             self.statusbar.showMessage("服务已终止")
             self.startBtn.setText("启动")
 
