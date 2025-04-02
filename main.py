@@ -246,18 +246,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_updateBtn_clicked(self):
         if os.path.exists(f"./{filename}"):
-            process = subprocess.Popen([f"{exec_filename}", '-v'], stdout=subprocess.PIPE, shell=use_shell,
-                                       cwd="./")
-            output = process.communicate()[0]
-            current_version = output.decode('utf-8')
-            current_version = current_version.rstrip("\n")
+            # 在 macOS 上使用替代方法获取版本
+            if sys.platform == 'darwin' and getattr(sys, 'frozen', False):
+                # 如果是打包的应用程序，直接使用应用自身的版本号
+                current_version = "v" + version.lstrip("v")  # 确保版本号格式一致
+                print(f"使用应用内置版本: {current_version}")
+            else:
+                # 在其他平台上保持原来的行为
+                process = subprocess.Popen([f"{exec_filename}", '-v'], stdout=subprocess.PIPE, shell=use_shell, cwd="./")
+                output = process.communicate()[0]
+                current_version = output.decode('utf-8')
+                current_version = current_version.rstrip("\n")
+            
             self.statusbar.showMessage(f"正在请求 GitHub 服务器查询当前最新版本 ...")
             core_latest_version = get_latest_version("cloud-clipboard-go")
             if core_latest_version is None:
                 self.statusbar.showMessage(f"无法连接到 GitHub 服务器")
                 return
             if core_latest_version == current_version:
-                self.statusbar.showMessage(f"Go File 已是最新版：{core_latest_version}")
+                self.statusbar.showMessage(f"cloud-clipboard-go 已是最新版：{core_latest_version}")
                 launcher_latest_version = get_latest_version("cloud-clipboard-go-launcher")
                 if launcher_latest_version is not None and launcher_latest_version != version:
                     self.statusbar.showMessage(
