@@ -4,7 +4,7 @@ import time
 APP = ['main.py']
 DATA_FILES = ['icon.png', 'main.ui', 'resource.qrc']
 OPTIONS = {
-    'argv_emulation': True,
+    'argv_emulation': False,
     'iconfile': 'icon.png',
     'plist': {
         'CFBundleName': 'cloud-clipboard-go',
@@ -13,6 +13,7 @@ OPTIONS = {
         'CFBundleVersion': 'v0.0.0',  # 将在构建时被替换为实际版本
         'CFBundleShortVersionString': 'v0.0.0',  # 将在构建时被替换为实际版本
         'NSHighResolutionCapable': True,
+        'LSApplicationCategoryType': 'public.app-category.utilities',
         'BuildTimestamp': str(int(time.time()))
     },
     'packages': ['PyQt5'],

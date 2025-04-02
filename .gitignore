@@ -12,3 +12,6 @@ __pycache*
 cloud-clip*
 config.json
 uploads
+staging
+venv
+*.dmg
