@@ -245,75 +245,160 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @pyqtSlot()
     def on_updateBtn_clicked(self):
+        self.statusbar.showMessage(f"正在请求 GitHub 服务器查询当前最新版本 ...")
+        
+        # 获取核心组件版本 - 从配置文件中读取
         if os.path.exists(f"./{filename}"):
-            # 在 macOS 上使用替代方法获取版本
-            if sys.platform == 'darwin' and getattr(sys, 'frozen', False):
-                # 如果是打包的应用程序，直接使用应用自身的版本号
-                current_version = version.lstrip("vV")  # 移除前缀
-                print(f"使用应用内置版本: v{current_version}")
+            # 从配置文件读取已保存的版本信息
+            if 'VERSION' in self.config and 'core_version' in self.config['VERSION']:
+                current_version = self.config['VERSION']['core_version'].lstrip("vV")
+                saved_publish_date = self.config['VERSION'].get('core_publish_date', '未知')
+                print(f"从配置文件读取版本: {current_version} ({saved_publish_date})")
             else:
-                # 在其他平台上保持原来的行为
-                process = subprocess.Popen([f"{exec_filename}", '-v'], stdout=subprocess.PIPE, shell=use_shell, cwd="./")
-                output = process.communicate()[0]
-                current_version = output.decode('utf-8').strip().lstrip("vV")
+                current_version = "未知"
+                saved_publish_date = "未知"
+                print("无法找到已保存的版本信息")
             
-            self.statusbar.showMessage(f"正在请求 GitHub 服务器查询当前最新版本 ...")
-            core_latest_version = get_latest_version("cloud-clipboard-go")
-            
-            if core_latest_version is None:
-                self.statusbar.showMessage(f"无法连接到 GitHub 服务器")
-                return
-                
-            # 标准化 GitHub 版本号
-            core_latest_clean = core_latest_version.lstrip("vV")
-            
-            print(f"本地版本: {current_version}, GitHub版本: {core_latest_clean}")
-            
-            # 使用标准化后的版本号比较
-            if current_version == core_latest_clean:
-                self.statusbar.showMessage(f"cloud-clipboard-go 已是最新版：{core_latest_version}")
-                launcher_latest_version = get_latest_version("cloud-clipboard-go-launcher")
-                
-                if launcher_latest_version is not None:
-                    # 标准化启动器版本号
-                    launcher_current = version.lstrip("vV")
-                    launcher_latest = launcher_latest_version.lstrip("vV")
-                    
-                    print(f"启动器本地版本: {launcher_current}, GitHub版本: {launcher_latest}")
-                    
-                    if launcher_latest != launcher_current:
-                        self.statusbar.showMessage(
-                            f"cloud-clipboard-go 已是最新版：{core_latest_version}，启动器更新可用：{version}->{launcher_latest_version}")
-                        return
-                        
-                self.statusbar.showMessage(f"已是最新版：cloud-clipboard-go {core_latest_version} & 启动器 {version}")
-                return
-                
-            # 如果需要更新，显示确认对话框
-            reply = QMessageBox.question(
-                self, 
-                "发现新版本", 
-                f"当前版本: v{current_version}\n最新版本: {core_latest_version}\n\n是否要更新?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes
-            )
-            
-            if reply == QMessageBox.Yes:
-                worker = ThreadDownloader(self.statusbar, self.updateBtn)
-                worker.start()
+            # 获取最新版本和发布日期
+            core_info = get_latest_version("cloud-clipboard-go")
+            if isinstance(core_info, tuple) and len(core_info) == 2:
+                core_latest_version, core_publish_date = core_info
             else:
-                self.statusbar.showMessage(f"更新已取消")
+                core_latest_version, core_publish_date = core_info, "未知"
         else:
-            # 如果本地文件不存在，直接下载
-            worker = ThreadDownloader(self.statusbar, self.updateBtn)
+            current_version = "未安装"
+            saved_publish_date = "未知"
+            core_info = get_latest_version("cloud-clipboard-go")
+            if isinstance(core_info, tuple) and len(core_info) == 2:
+                core_latest_version, core_publish_date = core_info
+            else:
+                core_latest_version, core_publish_date = core_info, "未知"
+        
+        if core_latest_version is None:
+            self.statusbar.showMessage(f"无法连接到 GitHub 服务器")
+            return
+        
+        # 标准化版本号
+        core_latest_clean = core_latest_version.lstrip("vV")
+        
+        # 判断核心组件是否需要更新
+        core_needs_update = current_version == "未知" or current_version != core_latest_clean
+        
+        # 获取启动器版本
+        launcher_current = version.lstrip("vV")
+        launcher_info = get_latest_version("cloud-clipboard-go-launcher")
+        if isinstance(launcher_info, tuple) and len(launcher_info) == 2:
+            launcher_latest_version, launcher_publish_date = launcher_info
+        else:
+            launcher_latest_version, launcher_publish_date = launcher_info, "未知"
+        
+        if launcher_latest_version is None:
+            self.statusbar.showMessage(f"无法连接到 GitHub 服务器")
+            return
+        
+        # 标准化启动器版本号
+        launcher_latest_clean = launcher_latest_version.lstrip("vV")
+        
+        # 判断启动器是否需要更新
+        launcher_needs_update = launcher_current != launcher_latest_clean
+        
+        # 如果两者都不需要更新
+        if not core_needs_update and not launcher_needs_update:
+            self.statusbar.showMessage(f"已是最新版：cloud-clipboard-go {core_latest_version} & 启动器 {version}")
+            return
+        
+        # 创建版本信息对话框
+        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("软件更新")
+        dialog.setWindowIcon(QIcon(":/icon.png"))
+        dialog.setMinimumWidth(400)
+        
+        layout = QVBoxLayout()
+        
+        # 添加核心组件信息
+        core_frame = QFrame()
+        core_frame.setFrameShape(QFrame.Box)
+        core_layout = QVBoxLayout(core_frame)
+        
+        core_title = QLabel("<b>Cloud Clipboard Go</b>")
+        core_layout.addWidget(core_title)
+        
+        core_info = QLabel(
+            f"当前版本：{current_version if current_version != '未安装' else '未安装'} "
+            f"({saved_publish_date})\n"
+            f"最新版本：{core_latest_clean} ({core_publish_date or '未知'})"
+        )
+        core_layout.addWidget(core_info)
+        
+        core_update_btn = QPushButton("更新" if current_version != "未安装" else "下载")
+        core_update_btn.setEnabled(core_needs_update)
+        core_layout.addWidget(core_update_btn)
+        
+        layout.addWidget(core_frame)
+        
+        # 添加分隔线
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(separator)
+        
+        # 添加启动器信息
+        launcher_frame = QFrame()
+        launcher_frame.setFrameShape(QFrame.Box)
+        launcher_layout = QVBoxLayout(launcher_frame)
+        
+        launcher_title = QLabel("<b>Cloud Clipboard Go Launcher</b>")
+        launcher_layout.addWidget(launcher_title)
+        
+        launcher_info = QLabel(
+            f"当前版本：{launcher_current}\n"
+            f"最新版本：{launcher_latest_clean} ({launcher_publish_date or '未知'})"
+        )
+        launcher_layout.addWidget(launcher_info)
+        
+        # 替换更新按钮为可点击链接
+        launcher_link = QLabel(
+            f'<a href="https://github.com/jonnyan404/cloud-clipboard-go-launcher/releases/latest">点击此处下载最新版启动器</a>'
+        )
+        launcher_link.setOpenExternalLinks(True)  # 允许打开外部链接
+        launcher_layout.addWidget(launcher_link)
+        
+        layout.addWidget(launcher_frame)
+        
+        # 添加关闭按钮
+        btn_layout = QHBoxLayout()
+        close_btn = QPushButton("关闭")
+        btn_layout.addStretch()
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
+        
+        dialog.setLayout(layout)
+        
+        # 连接信号
+        def update_core():
+            dialog.accept()
+            worker = ThreadDownloader(self.statusbar, self.updateBtn, self)
             worker.start()
+        
+        core_update_btn.clicked.connect(update_core)
+        def close_dialog():
+            dialog.reject()
+            self.statusbar.showMessage("用户取消更新")
+            
+        close_btn.clicked.connect(close_dialog)
+        
+        # 显示对话框
+        dialog.exec_()
 
 
 class ThreadDownloader(Thread):
-    def __init__(self, statusbar, updateBtn):
+    def __init__(self, statusbar, updateBtn, main_window=None):
         super().__init__()
         self.statusbar = statusbar
         self.updateBtn = updateBtn
+        self.main_window = main_window  # 保存 MainWindow 实例引用
 
     def run(self):
         self.updateBtn.setEnabled(False)
@@ -323,6 +408,14 @@ class ThreadDownloader(Thread):
         self.statusbar.showMessage(f"正在下载: {download_url}")
         
         try:
+            # 先获取最新版本信息
+            core_info = get_latest_version("cloud-clipboard-go")
+            if isinstance(core_info, tuple) and len(core_info) == 2:
+                latest_version, publish_date = core_info
+            else:
+                latest_version, publish_date = None, None
+                
+            # 下载逻辑保持不变
             res = requests.get(download_url)
             if res.status_code != 200:
                 self.statusbar.showMessage(f"下载失败：HTTP {res.status_code} - {res.text}")
@@ -334,7 +427,7 @@ class ThreadDownloader(Thread):
             with open(temp_file, "wb") as f:
                 f.write(res.content)
             
-            # 根据文件类型解压
+            # 解压逻辑保持不变
             if download_filename.endswith('.tar.gz'):
                 import tarfile
                 with tarfile.open(temp_file, "r:gz") as tar:
@@ -355,6 +448,26 @@ class ThreadDownloader(Thread):
             if os.name != "nt":
                 subprocess.run(["chmod", "u+x", f"./{filename}"])
                 
+            # 保存版本信息到配置文件
+            if latest_version and publish_date:
+                # 假设self.main_window是MainWindow的实例
+                from configparser import ConfigParser
+                config = ConfigParser()
+                # 尝试读取现有配置
+                config.read(config_file)
+                
+                # 确保有VERSION部分
+                if 'VERSION' not in config:
+                    config['VERSION'] = {}
+                    
+                # 保存版本信息
+                config['VERSION']['core_version'] = latest_version
+                config['VERSION']['core_publish_date'] = publish_date
+                
+                # 写入配置文件
+                with open(config_file, 'w') as f:
+                    config.write(f)
+                    
             self.statusbar.showMessage(f"下载并解压完成")
         except Exception as e:
             self.statusbar.showMessage(f"下载或解压过程出错: {str(e)}")

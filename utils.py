@@ -82,9 +82,14 @@ def system_related_secret():
 
 
 def get_latest_version(repository, username="jonnyan404"):
+    """获取最新版本信息，返回(版本号, 发布日期)元组"""
     try:
         data = requests.get(f"https://api.github.com/repos/{username}/{repository}/releases/latest").json()
-    except:
-        return None
-    latest_version = data["tag_name"]
-    return latest_version
+        if "tag_name" not in data:
+            return None, None
+        latest_version = data["tag_name"]
+        published_at = data.get("published_at", "").split("T")[0]  # 只保留日期部分
+        return latest_version, published_at
+    except Exception as e:
+        print(f"获取版本信息失败: {e}")
+        return None, None
