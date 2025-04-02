@@ -4,6 +4,7 @@ import time
 APP = ['main.py']
 DATA_FILES = ['icon.png', 'main.ui', 'resource.qrc']
 OPTIONS = {
+    # 关键修改：禁用参数模拟，这是使用Carbon框架的原因
     'argv_emulation': False,
     'iconfile': 'icon.png',
     'plist': {

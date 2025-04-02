@@ -27,16 +27,22 @@
 <img src="demo.png" alt="demo" width="597">
 
 ## 使用方法
-### Windows 用户  
-直接双击 cloud-clipboard-go-launcher.exe 运行。
+### Windows 用户
+1. 新建一个目录,下载`cloud-clipboard-go-launcher.exe`到此目录
+2. 双击运行。
 
 ### macOS 用户
 
 1. 下载`*.dmg`或者`*-macos.zip`之后安装并运行；
-2. 命令行执行`xattr -cr /Applications/cloud-clipboard-go.app`
-
+2. 授权应用:
+```
+在`系统设置`-->`隐私与安全性`-->`安全性`处,允许运行即可。
+或者
+xattr -cr /Applications/cloud-clipboard-go.app
+```
 
 ### Linux 用户
+
 同上，区别在于文件名换成 `cloud-clipboard-go-launcher`。
 
 ## 打包流程
