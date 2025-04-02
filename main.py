@@ -183,9 +183,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 host = self.hostComboBox.currentText()
                 file_path = self.fileLineEdit.text()
                 video_path = self.videoLineEdit.text()
-                self.gofile = subprocess.Popen(
-                    [f"{exec_filename}", "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-auth",
-                     f"{video_path}"], shell=use_shell, cwd="./")
+                
+                # macOS 特殊处理
+                if sys.platform == 'darwin':
+                    # 如果是 .app 包，需要找到实际的可执行文件
+                    if os.path.isdir(f"./{filename}") and filename.endswith(".app"):
+                        # 查找实际的可执行文件，通常在 Contents/MacOS 下
+                        macos_exec = f"./{filename}/Contents/MacOS/{os.path.basename(filename.rstrip('.app'))}"
+                        if os.path.exists(macos_exec):
+                            exec_filename_real = macos_exec
+                        else:
+                            # 如果找不到，尝试与目录名相同的可执行文件
+                            exec_filename_real = f"./{filename}/Contents/MacOS/{os.path.basename(filename)}"
+                    else:
+                        # 普通二进制文件
+                        exec_filename_real = exec_filename
+                        
+                    # 在 macOS 上始终使用 shell=False 来避免新窗口
+                    self.gofile = subprocess.Popen(
+                        [exec_filename_real, "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-auth", f"{video_path}"],
+                        shell=False,
+                        cwd="./",
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE)
+                else:
+                    # 其他平台保持不变
+                    self.gofile = subprocess.Popen(
+                        [f"{exec_filename}", "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-auth", f"{video_path}"],
+                        shell=use_shell,
+                        cwd="./")
+                        
                 self.statusbar.showMessage("服务已启动")
                 self.startBtn.setText("终止")
             else:
@@ -194,9 +221,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if os.name == "nt":
                 subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=self.gofile.pid), shell=True)
             else:
-                # Not tested.
-                # https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
-                self.gofile.kill()
+                # 在 Unix 系统上使用更可靠的终止方法
+                import signal
+                try:
+                    # 先尝试优雅关闭
+                    self.gofile.send_signal(signal.SIGTERM)
+                    # 给一点时间关闭
+                    import time
+                    time.sleep(0.5)
+                    # 如果还在运行，强制关闭
+                    if self.gofile.poll() is None:
+                        self.gofile.kill()
+                except Exception as e:
+                    print(f"终止进程时出错: {e}")
+                    
             self.gofile = None
             self.statusbar.showMessage("服务已终止")
             self.startBtn.setText("启动")
