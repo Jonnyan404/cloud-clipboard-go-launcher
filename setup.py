@@ -1,4 +1,5 @@
 from setuptools import setup
+import time
 
 APP = ['main.py']
 DATA_FILES = ['icon.png', 'main.ui', 'resource.qrc']
@@ -12,6 +13,7 @@ OPTIONS = {
         'CFBundleVersion': 'v0.0.0',  # 将在构建时被替换为实际版本
         'CFBundleShortVersionString': 'v0.0.0',  # 将在构建时被替换为实际版本
         'NSHighResolutionCapable': True,
+        'BuildTimestamp': str(int(time.time()))
     },
     'packages': ['PyQt5'],
 }
