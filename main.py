@@ -116,6 +116,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.config.read(config_file)
         self.ips = get_ips()
         self.ips.insert(0, "localhost")
+        self.ips.insert(1, "0.0.0.0")
         for ip in self.ips:
             self.hostComboBox.addItem(ip, ip)
         if 'host' in self.config['DEFAULT']:

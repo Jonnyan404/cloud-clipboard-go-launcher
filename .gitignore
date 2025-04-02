@@ -9,3 +9,6 @@ build
 .DS_Store
 *.ini
 __pycache*
+cloud-clip*
+config.json
+uploads
