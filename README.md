@@ -15,7 +15,7 @@
   </a>
 </p>
 
-可在 [Release 页面](https://github.com/jonnyan404/cloud-clipboard-go-lancher/releases)下载最新版本（Windows，macOS，Linux）。
+可在 [Release 页面](https://github.com/Jonnyan404/cloud-clipboard-go-launcher/releases/latest)下载最新版本（Windows，macOS，Linux）。
 
 ## 功能
 1. 一键启动 cloud-clipboard-go。
