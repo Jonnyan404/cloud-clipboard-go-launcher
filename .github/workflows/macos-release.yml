@@ -50,7 +50,6 @@ jobs:
           
           # 安装依赖
           pip install -r requirements.txt
-          pip install pyinstaller
           pip install py2app
           
           # 生成UI文件
@@ -64,19 +63,6 @@ jobs:
           ls -la dist/cloud-clipboard-go.app/Contents/
           ls -la dist/cloud-clipboard-go.app/Contents/MacOS/
           ls -la dist/cloud-clipboard-go.app/Contents/Resources/
-
-          # # 使用 PyInstaller 构建 macOS 应用
-          # pyinstaller --windowed --onedir \
-          #   --add-data="icon.png:." \
-          #   --add-data="main.ui:." \
-          #   --add-data="resource.qrc:." \
-          #   --hidden-import=PyQt5.QtCore \
-          #   --hidden-import=PyQt5.QtGui \
-          #   --hidden-import=PyQt5.QtWidgets \
-          #   --icon=icon.png \
-          #   -n "cloud-clipboard-go" \
-          #   ./main.py
-
           
       - name: Create DMG
         run: |
@@ -100,35 +86,36 @@ jobs:
           cd dist
           zip -r "cloud-clipboard-go-${{ env.VERSION }}-macOS.zip" "cloud-clipboard-go.app"
           cd ..
-      # 在 'Create ZIP backup' 步骤后添加
+          
       - name: Calculate SHA256
         run: |
           DMG_PATH="cloud-clipboard-go-${{ env.VERSION }}.dmg"
           SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
           echo "SHA256=$SHA256" >> $GITHUB_ENV
+      
+      - name: Update Homebrew Tap
+        if: success()
+        run: |
+          # 克隆tap仓库
+          git clone https://x-access-token:${{ secrets.TAP_TOKEN }}@github.com/jonnyan404/homebrew-tap.git
+          cd homebrew-tap
           
-          - name: Update Homebrew Tap
-          if: success()
-          run: |
-            # 克隆tap仓库
-            git clone https://x-access-token:${{ secrets.TAP_TOKEN }}@github.com/jonnyan404/homebrew-tap.git
-            cd homebrew-tap
-            
-            # 创建Casks目录
-            mkdir -p Casks
-            
-            # 使用项目中的模板文件，并替换占位符
-            cat ../homebrew/cloud-clipboard-go.rb.template | \
-              sed "s/VERSION_PLACEHOLDER/${{ env.VERSION }}/g" | \
-              sed "s/SHA256_PLACEHOLDER/${{ env.SHA256 }}/g" > \
-              Casks/cloud-clipboard-go.rb
-            
-            # 提交并推送更改
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-            git config --local user.name "GitHub Actions"
-            git add Casks/cloud-clipboard-go.rb
-            git commit -m "Update cloud-clipboard-go to ${{ env.VERSION }}" || echo "No changes to commit"
-            git push
+          # 创建Casks目录
+          mkdir -p Casks
+          
+          # 使用项目中的模板文件，并替换占位符
+          cat ../homebrew/cloud-clipboard-go.rb.template | \
+            sed "s/VERSION_PLACEHOLDER/${{ env.VERSION }}/g" | \
+            sed "s/SHA256_PLACEHOLDER/${{ env.SHA256 }}/g" > \
+            Casks/cloud-clipboard-go.rb
+          
+          # 提交并推送更改
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+          git add Casks/cloud-clipboard-go.rb
+          git commit -m "Update cloud-clipboard-go to ${{ env.VERSION }}" || echo "No changes to commit"
+          git push
+          
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
