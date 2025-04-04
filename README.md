@@ -32,7 +32,7 @@
 2. 双击运行。
 
 ### macOS 用户
-
+- 方式一
 1. 下载`*.dmg`或者`*-macos.zip`之后安装并运行；
 2. 授权应用:
 ```
@@ -40,6 +40,23 @@
 或者
 xattr -cr /Applications/cloud-clipboard-go.app
 ```
+
+- 方式二
+
+```bash
+# 添加我们的 tap
+brew tap jonnyan404/tap
+# 安装应用
+brew install --cask cloud-clipboard-go
+
+# 更新
+brew update
+brew upgrade --cask cloud-clipboard-go
+```
+
+### 手动安装
+
+从 [Releases 页面](https://github.com/jonnyan404/cloud-clipboard-go-launcher/releases/latest) 下载最新的 `.dmg` 文件，然后拖放到应用程序文件夹。
 
 ### Linux 用户
 
