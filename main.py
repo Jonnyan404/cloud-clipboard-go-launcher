@@ -246,7 +246,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_updateBtn_clicked(self):
         self.statusbar.showMessage(f"正在请求 GitHub 服务器查询当前最新版本 ...")
-        
+        self.config.read(config_file)
         # 获取核心组件版本 - 从配置文件中读取
         if os.path.exists(f"./{filename}"):
             # 从配置文件读取已保存的版本信息
