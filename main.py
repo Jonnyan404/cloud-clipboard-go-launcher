@@ -185,7 +185,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not self.fileLineEdit.text():
                     self.statusbar.showMessage(f"使用默认配置文件: {file_path}")
               
-                video_path = self.videoLineEdit.text()
+                video_path = str(self.videoLineEdit.text() or "")
                 self.gofile = subprocess.Popen(
                     [f"{exec_filename}", "-port", f"{port}", "-host", f"{host}", "-config", f"{file_path}", "-auth",
                      f"{video_path}"], shell=use_shell, cwd="./")
