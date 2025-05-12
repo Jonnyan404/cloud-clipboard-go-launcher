@@ -158,10 +158,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.config['PROXY']['proxy_type'] = 'HTTP'
             
         if 'proxy_server' not in self.config['PROXY']:
-            self.config['PROXY']['proxy_server'] = ''
+            self.config['PROXY']['proxy_server'] = '127.0.0.1'
             
         if 'proxy_port' not in self.config['PROXY']:
-            self.config['PROXY']['proxy_port'] = '1080'
+            self.config['PROXY']['proxy_port'] = '7897'
             
         if 'auth_enabled' not in self.config['PROXY']:
             self.config['PROXY']['auth_enabled'] = 'False'
@@ -490,15 +490,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         traditional_layout.addLayout(proxy_type_layout)
         proxy_server_layout = QHBoxLayout()
         proxy_server_label = QLabel("服务器地址:")
-        proxy_server_edit = QLineEdit(self.config['PROXY'].get('proxy_server', ''))
+        proxy_server_edit = QLineEdit(self.config['PROXY'].get('proxy_server', '127.0.0.1'))
         proxy_server_edit.setPlaceholderText("example.com 或 127.0.0.1")
         proxy_server_layout.addWidget(proxy_server_label)
         proxy_server_layout.addWidget(proxy_server_edit)
         traditional_layout.addLayout(proxy_server_layout)
         proxy_port_layout = QHBoxLayout()
         proxy_port_label = QLabel("端口号:")
-        proxy_port_edit = QLineEdit(self.config['PROXY'].get('proxy_port', '1080'))
-        proxy_port_edit.setPlaceholderText("1080")
+        proxy_port_edit = QLineEdit(self.config['PROXY'].get('proxy_port', '7897'))
+        proxy_port_edit.setPlaceholderText("7897")
         proxy_port_layout.addWidget(proxy_port_label)
         proxy_port_layout.addWidget(proxy_port_edit)
         traditional_layout.addLayout(proxy_port_layout)
@@ -563,7 +563,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             url_edit.setText("https://gh-proxy.com")
             proxy_type_combo.setCurrentText("HTTP")
             proxy_server_edit.setText("")
-            proxy_port_edit.setText("1080")
+            proxy_port_edit.setText("")
             auth_group.setChecked(False)
             username_edit.setText("")
             password_edit.setText("")
@@ -650,8 +650,8 @@ class ThreadDownloader(Thread):
             elif proxy_type.lower() == 'traditional':
                 # 传统HTTP/SOCKS代理
                 proxy_protocol = config['PROXY'].get('proxy_type', 'HTTP').lower()
-                proxy_server = config['PROXY'].get('proxy_server', '')
-                proxy_port = config['PROXY'].get('proxy_port', '1080')
+                proxy_server = config['PROXY'].get('proxy_server', '127.0.0.1')
+                proxy_port = config['PROXY'].get('proxy_port', '7897')
                 auth_enabled = config['PROXY'].get('auth_enabled', '').lower() == 'true'
                 
                 # 构建代理URL
