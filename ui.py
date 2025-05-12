@@ -10,7 +10,6 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -72,7 +71,10 @@ class Ui_MainWindow(object):
         self.gridLayout.addLayout(self.horizontalLayout_3, 2, 0, 1, 1)
         self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
-        spacerItem1 = QtWidgets.QSpacerItem(178, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.proxySettingsBtn = QtWidgets.QPushButton(self.centralwidget)
+        self.proxySettingsBtn.setObjectName("proxySettingsBtn")
+        self.horizontalLayout_4.addWidget(self.proxySettingsBtn)
+        spacerItem1 = QtWidgets.QSpacerItem(98, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout_4.addItem(spacerItem1)
         self.aboutBtn = QtWidgets.QPushButton(self.centralwidget)
         self.aboutBtn.setObjectName("aboutBtn")
@@ -105,6 +107,7 @@ class Ui_MainWindow(object):
         self.fileChooseBtn.setText(_translate("MainWindow", "选择路径"))
         self.label_4.setText(_translate("MainWindow", "设置认证密码："))
         self.videoChooseBtn.setText(_translate("MainWindow", "查看密码"))
+        self.proxySettingsBtn.setText(_translate("MainWindow", "代理设置"))
         self.aboutBtn.setText(_translate("MainWindow", "关于"))
         self.updateBtn.setText(_translate("MainWindow", "检查更新"))
         self.openWebBtn.setText(_translate("MainWindow", "打开网站"))

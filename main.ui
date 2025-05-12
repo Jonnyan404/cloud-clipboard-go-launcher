@@ -129,13 +129,20 @@
     <item row="3" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_4">
       <item>
+       <widget class="QPushButton" name="proxySettingsBtn">
+        <property name="text">
+         <string>代理设置</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>178</width>
+          <width>98</width>
           <height>20</height>
          </size>
         </property>
@@ -155,7 +162,6 @@
         </property>
        </widget>
       </item>
-            <!-- 添加打开网站按钮 -->
       <item>
        <widget class="QPushButton" name="openWebBtn">
         <property name="text">

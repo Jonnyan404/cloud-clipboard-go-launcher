@@ -4,16 +4,16 @@ import subprocess
 import sys
 from threading import Thread
 import platform
+import time
 
 import requests
 from PyQt5.QtCore import pyqtSlot, Qt, QSize
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QLineEdit
-
-# 先创建QApplication实例（必须放在最前面）
-app = QApplication(sys.argv)
+from PyQt5.QtWidgets import QGroupBox, QRadioButton, QTabWidget, QWidget,QCheckBox, QComboBox, QDialog,QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,QLineEdit,QApplication, QMainWindow, QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QLineEdit
+from configparser import ConfigParser 
 from ui import Ui_MainWindow
 from utils import get_ips, system_related_secret, get_latest_version
+
 
 # 修改文件名逻辑
 base_filename = "cloud-clipboard-go"
@@ -68,26 +68,6 @@ else:
     download_filename = f"{base_filename}_Linux_x86_64.tar.gz"
 
 os.environ["SESSION_SECRET"] = system_related_secret()
-
-# macOS程序坞图标设置（放在QApplication创建之后）
-if sys.platform == 'darwin':
-    try:
-        # 创建应用图标
-        app_icon = QIcon("icon.png")  # 确保icon.png文件存在
-        
-        # 设置应用图标
-        app.setWindowIcon(app_icon)
-        
-        # macOS特定设置
-        app.setAttribute(Qt.AA_UseHighDpiPixmaps)
-        
-        # 设置应用名称和ID
-        app.setApplicationName("Cloud Clipboard")
-        
-        # 在macOS中，这个会显示在程序坞和菜单栏中
-        app.setApplicationDisplayName("Cloud Clipboard")
-    except Exception as e:
-        print(f"设置macOS图标失败: {e}")
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -158,6 +138,39 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not os.path.exists(f"./{filename}"):
             self.updateBtn.setText("下载 cloud-clipboard-go")
 
+        # 添加代理配置相关逻辑
+        if 'PROXY' not in self.config:
+            self.config['PROXY'] = {}
+            
+        # 设置默认代理类型为URL
+        if 'type' not in self.config['PROXY']:
+            self.config['PROXY']['type'] = 'url'
+            
+        # 默认加速URL
+        if 'url' not in self.config['PROXY']:
+            self.config['PROXY']['url'] = "https://gh-proxy.com"
+            
+        if 'enabled' not in self.config['PROXY']:
+            self.config['PROXY']['enabled'] = 'False'
+            
+        # 传统代理的默认值
+        if 'proxy_type' not in self.config['PROXY']:
+            self.config['PROXY']['proxy_type'] = 'HTTP'
+            
+        if 'proxy_server' not in self.config['PROXY']:
+            self.config['PROXY']['proxy_server'] = ''
+            
+        if 'proxy_port' not in self.config['PROXY']:
+            self.config['PROXY']['proxy_port'] = '1080'
+            
+        if 'auth_enabled' not in self.config['PROXY']:
+            self.config['PROXY']['auth_enabled'] = 'False'
+
+        # 将代理设置按钮与处理函数连接
+        self.proxy_dialog_active = False
+        self._last_proxy_dialog_close_time = 0 # 用于防抖动
+        self.proxySettingsBtn.clicked.connect(self.on_proxySettingsBtn_clicked)
+
     def closeEvent(self, event):
         if self.gofile is None:
             event.accept()
@@ -212,14 +225,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.statusbar.showMessage(f"已选择：{path}")
 
     @pyqtSlot()
-    def on_videoChooseBtn_clicked(self):
-        from PyQt5.QtWidgets import QLineEdit
-        
+    def on_videoChooseBtn_clicked(self):      
         # 获取当前密码
         current_password = self.videoLineEdit.text()
         
         if not current_password:
-            from PyQt5.QtWidgets import QMessageBox
             QMessageBox.information(
                 self,
                 "提示",
@@ -309,9 +319,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not core_needs_update and not launcher_needs_update:
             self.statusbar.showMessage(f"已是最新版：cloud-clipboard-go {core_latest_version} & 启动器 {version}")
             return
-        
-        # 创建版本信息对话框
-        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame
         
         dialog = QDialog(self)
         dialog.setWindowTitle("软件更新")
@@ -413,6 +420,199 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 打开默认浏览器
         webbrowser.open(url)
 
+    @pyqtSlot()
+    def on_proxySettingsBtn_clicked(self):
+        """打开代理设置对话框，支持传统HTTP/SOCKS代理和认证"""
+        
+        current_time = time.time()
+        # 防抖动检查：如果距离上次对话框关闭时间非常短（例如少于100毫秒），则忽略此次点击
+        if hasattr(self, '_last_proxy_dialog_close_time') and \
+           current_time - self._last_proxy_dialog_close_time < 0.1: # 100毫秒阈值
+            print("代理设置按钮点击过快（可能为自动重触发），已忽略。")
+            return
+
+        if self.proxy_dialog_active:
+            print("代理设置对话框已经打开，忽略请求")
+            return
+        
+        print("代理设置按钮被点击") 
+        self.proxy_dialog_active = True # 在显示对话框前立即设置
+
+        # 创建对话框
+        dialog = QDialog(self)
+        dialog.setWindowTitle("代理设置")
+        dialog.setWindowIcon(QIcon(":/icon.png"))
+        dialog.setMinimumWidth(450)
+        dialog.setAttribute(Qt.WA_DeleteOnClose, True) # 确保对话框关闭时删除
+        layout = QVBoxLayout()
+        
+        # ====== 选项卡和按钮的创建逻辑 (从您的代码中复制并确保变量名正确) ======
+        # 创建选项卡
+        tab_widget = QTabWidget()
+        
+        # ====== 第一个选项卡：GH加速代理 ======
+        url_proxy_tab = QWidget()
+        url_layout = QVBoxLayout()
+        url_info_label = QLabel("设置GitHub下载加速代理URL，加速下载云剪贴板核心组件")
+        url_layout.addWidget(url_info_label)
+        url_proxy_checkbox = QCheckBox("启用URL加速代理")
+        url_proxy_checkbox.setChecked(self.config['PROXY'].get('type', '').lower() == 'url' and self.config['PROXY'].get('enabled', '').lower() == 'true')
+        url_layout.addWidget(url_proxy_checkbox)
+        url_input_layout = QHBoxLayout()
+        url_label = QLabel("代理URL:")
+        url_edit = QLineEdit(self.config['PROXY'].get('url', 'https://gh-proxy.com'))
+        url_edit.setPlaceholderText("https://gh-proxy.com")
+        url_input_layout.addWidget(url_label)
+        url_input_layout.addWidget(url_edit)
+        url_layout.addLayout(url_input_layout)
+        url_example = QLabel("示例: https://gh-proxy.com/, https://ghproxy.com/ 等")
+        url_layout.addWidget(url_example)
+        url_proxy_tab.setLayout(url_layout)
+        
+        # ====== 第二个选项卡：HTTP/SOCKS代理 ======
+        traditional_proxy_tab = QWidget()
+        traditional_layout = QVBoxLayout()
+        traditional_info_label = QLabel("设置传统HTTP/SOCKS代理，通过代理服务器连接GitHub")
+        traditional_layout.addWidget(traditional_info_label)
+        traditional_proxy_checkbox = QCheckBox("启用HTTP/SOCKS代理")
+        traditional_proxy_checkbox.setChecked(self.config['PROXY'].get('type', '').lower() == 'traditional' and self.config['PROXY'].get('enabled', '').lower() == 'true')
+        traditional_layout.addWidget(traditional_proxy_checkbox)
+        proxy_type_layout = QHBoxLayout()
+        proxy_type_label = QLabel("代理类型:")
+        proxy_type_combo = QComboBox()
+        proxy_type_combo.addItems(["HTTP", "SOCKS4", "SOCKS5"])
+        current_proxy_type = self.config['PROXY'].get('proxy_type', 'HTTP')
+        proxy_type_index = proxy_type_combo.findText(current_proxy_type)
+        if proxy_type_index >= 0:
+            proxy_type_combo.setCurrentIndex(proxy_type_index)
+        proxy_type_layout.addWidget(proxy_type_label)
+        proxy_type_layout.addWidget(proxy_type_combo)
+        traditional_layout.addLayout(proxy_type_layout)
+        proxy_server_layout = QHBoxLayout()
+        proxy_server_label = QLabel("服务器地址:")
+        proxy_server_edit = QLineEdit(self.config['PROXY'].get('proxy_server', ''))
+        proxy_server_edit.setPlaceholderText("example.com 或 127.0.0.1")
+        proxy_server_layout.addWidget(proxy_server_label)
+        proxy_server_layout.addWidget(proxy_server_edit)
+        traditional_layout.addLayout(proxy_server_layout)
+        proxy_port_layout = QHBoxLayout()
+        proxy_port_label = QLabel("端口号:")
+        proxy_port_edit = QLineEdit(self.config['PROXY'].get('proxy_port', '1080'))
+        proxy_port_edit.setPlaceholderText("1080")
+        proxy_port_layout.addWidget(proxy_port_label)
+        proxy_port_layout.addWidget(proxy_port_edit)
+        traditional_layout.addLayout(proxy_port_layout)
+        auth_group = QGroupBox("认证信息")
+        auth_group.setCheckable(True)
+        auth_group.setChecked(self.config['PROXY'].get('auth_enabled', '').lower() == 'true')
+        auth_layout = QVBoxLayout()
+        username_layout = QHBoxLayout()
+        username_label = QLabel("用户名:")
+        username_edit = QLineEdit(self.config['PROXY'].get('proxy_username', ''))
+        username_layout.addWidget(username_label)
+        username_layout.addWidget(username_edit)
+        auth_layout.addLayout(username_layout)
+        password_layout = QHBoxLayout()
+        password_label = QLabel("密码:")
+        password_edit = QLineEdit(self.config['PROXY'].get('proxy_password', ''))
+        password_edit.setEchoMode(QLineEdit.Password)
+        password_layout.addWidget(password_label)
+        password_layout.addWidget(password_edit)
+        auth_layout.addLayout(password_layout)
+        auth_group.setLayout(auth_layout)
+        traditional_layout.addWidget(auth_group)
+        traditional_proxy_tab.setLayout(traditional_layout)
+        
+        tab_widget.addTab(url_proxy_tab, "加速URL")
+        tab_widget.addTab(traditional_proxy_tab, "HTTP/SOCKS代理")
+        layout.addWidget(tab_widget)
+        
+        btn_layout = QHBoxLayout()
+        reset_btn = QPushButton("恢复默认")
+        save_btn = QPushButton("保存")
+        cancel_btn = QPushButton("取消")
+        btn_layout.addWidget(reset_btn)
+        btn_layout.addStretch()
+        btn_layout.addWidget(save_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
+        dialog.setLayout(layout)
+
+        # 设置选项卡之间的互斥关系
+        def on_url_checkbox_changed(state):
+            if state:
+                traditional_proxy_checkbox.setChecked(False)
+                
+        def on_traditional_checkbox_changed(state):
+            if state:
+                url_proxy_checkbox.setChecked(False)
+        
+        url_proxy_checkbox.stateChanged.connect(on_url_checkbox_changed)
+        traditional_proxy_checkbox.stateChanged.connect(on_traditional_checkbox_changed)
+        
+        # 统一的清理函数，在对话框 finished 时调用
+        def actual_cleanup_and_log(result_code): # QDialog.finished 传递结果码
+            self.proxy_dialog_active = False
+            self._last_proxy_dialog_close_time = time.time() # 更新关闭时间戳
+            print(f"代理设置对话框已关闭 (结果: {result_code})")
+
+        # 连接信号
+        def reset_defaults_action(): # 重命名以避免与外部函数冲突
+            url_proxy_checkbox.setChecked(True)
+            traditional_proxy_checkbox.setChecked(False)
+            url_edit.setText("https://gh-proxy.com")
+            proxy_type_combo.setCurrentText("HTTP")
+            proxy_server_edit.setText("")
+            proxy_port_edit.setText("1080")
+            auth_group.setChecked(False)
+            username_edit.setText("")
+            password_edit.setText("")
+            tab_widget.setCurrentIndex(0)
+        
+        def save_settings_action(): # 重命名
+            # 保存代理设置
+            if url_proxy_checkbox.isChecked():
+                self.config['PROXY']['enabled'] = 'True'
+                self.config['PROXY']['type'] = 'url'
+                self.config['PROXY']['url'] = url_edit.text()
+                self.statusbar.showMessage(f"已启用URL加速代理: {url_edit.text()}")
+            elif traditional_proxy_checkbox.isChecked():
+                self.config['PROXY']['enabled'] = 'True'
+                self.config['PROXY']['type'] = 'traditional'
+                # ... (省略了其他配置项的保存，与您原代码一致) ...
+                self.config['PROXY']['proxy_type'] = proxy_type_combo.currentText()
+                self.config['PROXY']['proxy_server'] = proxy_server_edit.text()
+                self.config['PROXY']['proxy_port'] = proxy_port_edit.text()
+                self.config['PROXY']['auth_enabled'] = str(auth_group.isChecked())
+                self.config['PROXY']['proxy_username'] = username_edit.text() if auth_group.isChecked() else ''
+                self.config['PROXY']['proxy_password'] = password_edit.text() if auth_group.isChecked() else ''
+                proxy_desc = f"{proxy_type_combo.currentText()}://{proxy_server_edit.text()}:{proxy_port_edit.text()}"
+                if auth_group.isChecked():
+                    proxy_desc += " (已设置认证)"
+                self.statusbar.showMessage(f"已启用HTTP/SOCKS代理: {proxy_desc}")
+            else:
+                self.config['PROXY']['enabled'] = 'False'
+                self.statusbar.showMessage("代理已禁用")
+            
+            with open(config_file, 'w') as f:
+                self.config.write(f)
+            
+            dialog.accept() # 这将关闭对话框并触发 finished 信号
+
+        def cancel_settings_action(): # 重命名
+            dialog.reject() # 这将关闭对话框并触发 finished 信号
+
+        reset_btn.clicked.connect(reset_defaults_action)
+        save_btn.clicked.connect(save_settings_action)
+        cancel_btn.clicked.connect(cancel_settings_action)
+        
+        # 关键：只将 dialog.finished 连接到清理函数
+        dialog.finished.connect(actual_cleanup_and_log)
+        
+        # 显示对话框
+        dialog.exec_()
+        # 当 exec_() 返回后, actual_cleanup_and_log 会被调用过一次,
+        # self.proxy_dialog_active 会是 False, _last_proxy_dialog_close_time 会被更新。
 
 class ThreadDownloader(Thread):
     def __init__(self, statusbar, updateBtn, main_window=None):
@@ -425,8 +625,60 @@ class ThreadDownloader(Thread):
         self.updateBtn.setEnabled(False)
         self.statusbar.showMessage("正在从 GitHub 上获取最新版 ...")
         
-        download_url = f"https://github.com/jonnyan404/cloud-clipboard-go/releases/latest/download/{download_filename}"
-        self.statusbar.showMessage(f"正在下载: {download_url}")
+        # 读取代理配置
+        config = configparser.ConfigParser()
+        config.read(config_file)
+        
+        proxy_enabled = config['PROXY'].get('enabled', '').lower() == 'true'
+        proxy_type = config['PROXY'].get('type', '')
+        
+        # 定义代理设置
+        proxies = None
+        
+        # 原始下载URL
+        github_url = f"https://github.com/jonnyan404/cloud-clipboard-go/releases/latest/download/{download_filename}"
+        download_url = github_url
+        
+        if proxy_enabled:
+            if proxy_type.lower() == 'url':
+                # URL加速代理
+                proxy_url = config['PROXY'].get('url', 'https://gh-proxy.com')
+                if not proxy_url.endswith('/'):
+                    proxy_url = proxy_url + '/'
+                download_url = f"{proxy_url}https://github.com/jonnyan404/cloud-clipboard-go/releases/latest/download/{download_filename}"
+                self.statusbar.showMessage(f"使用URL加速代理: {download_url}")
+            elif proxy_type.lower() == 'traditional':
+                # 传统HTTP/SOCKS代理
+                proxy_protocol = config['PROXY'].get('proxy_type', 'HTTP').lower()
+                proxy_server = config['PROXY'].get('proxy_server', '')
+                proxy_port = config['PROXY'].get('proxy_port', '1080')
+                auth_enabled = config['PROXY'].get('auth_enabled', '').lower() == 'true'
+                
+                # 构建代理URL
+                proxy_url = f"{proxy_protocol.lower()}://"
+                
+                # 添加认证信息
+                if auth_enabled:
+                    username = config['PROXY'].get('proxy_username', '')
+                    password = config['PROXY'].get('proxy_password', '')
+                    if username:
+                        if password:
+                            proxy_url += f"{username}:{password}@"
+                        else:
+                            proxy_url += f"{username}@"
+                
+                # 添加服务器和端口
+                proxy_url += f"{proxy_server}:{proxy_port}"
+                
+                # 根据代理协议设置不同的代理
+                proxies = {
+                    'http': proxy_url,
+                    'https': proxy_url
+                }
+                
+                self.statusbar.showMessage(f"使用{proxy_protocol}代理: {proxy_server}:{proxy_port}")
+        else:
+            self.statusbar.showMessage(f"未使用代理，直接下载: {download_url}")
         
         try:
             # 先获取最新版本信息
@@ -436,8 +688,12 @@ class ThreadDownloader(Thread):
             else:
                 latest_version, publish_date = None, None
                 
-            # 下载逻辑保持不变
-            res = requests.get(download_url)
+            # 下载文件
+            if proxies:
+                res = requests.get(download_url, proxies=proxies)
+            else:
+                res = requests.get(download_url)
+            
             if res.status_code != 200:
                 self.statusbar.showMessage(f"下载失败：HTTP {res.status_code} - {res.text}")
                 self.updateBtn.setEnabled(True)
@@ -472,7 +728,7 @@ class ThreadDownloader(Thread):
             # 保存版本信息到配置文件
             if latest_version and publish_date:
                 # 假设self.main_window是MainWindow的实例
-                from configparser import ConfigParser
+                
                 config = ConfigParser()
                 # 尝试读取现有配置
                 config.read(config_file)
@@ -498,6 +754,26 @@ class ThreadDownloader(Thread):
 
 
 if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    # macOS程序坞图标设置（放在QApplication创建之后）
+    if sys.platform == 'darwin':
+        try:
+            # 创建应用图标
+            app_icon = QIcon("icon.png")  # 确保icon.png文件存在
+            
+            # 设置应用图标
+            app.setWindowIcon(app_icon)
+            
+            # macOS特定设置
+            app.setAttribute(Qt.AA_UseHighDpiPixmaps)
+            
+            # 设置应用名称和ID
+            app.setApplicationName("Cloud Clipboard")
+            
+            # 在macOS中，这个会显示在程序坞和菜单栏中
+            app.setApplicationDisplayName("Cloud Clipboard")
+        except Exception as e:
+            print(f"设置macOS图标失败: {e}")
     Dialog = MainWindow()
     Dialog.show()
     sys.exit(app.exec_())
