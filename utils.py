@@ -102,17 +102,18 @@ def get_latest_version(repository, username="jonnyan404"):
         
         if proxy_enabled:
             if proxy_type.lower() == 'url':
-                # URL加速代理
-                proxy_url = config['PROXY'].get('url', 'https://gh-proxy.com')
-                if not proxy_url.endswith('/'):
-                    proxy_url += '/'
-                api_url = f"{proxy_url}{api_url}"
-                print(f"使用URL加速代理获取版本信息: {api_url}")
+                # # URL加速代理
+                # proxy_url = config['PROXY'].get('url', 'https://gh-proxy.com')
+                # if not proxy_url.endswith('/'):
+                #     proxy_url += '/'
+                # api_url = f"{proxy_url}{api_url}"
+                # print(f"使用URL加速代理获取版本信息: {api_url}")
+                print("URL加速代理无法获取版本信息,已禁用")
             elif proxy_type.lower() == 'traditional':
                 # 传统HTTP/SOCKS代理
                 proxy_protocol = config['PROXY'].get('proxy_type', 'HTTP').lower()
-                proxy_server = config['PROXY'].get('proxy_server', '')
-                proxy_port = config['PROXY'].get('proxy_port', '1080')
+                proxy_server = config['PROXY'].get('proxy_server', '127.0.0.1')
+                proxy_port = config['PROXY'].get('proxy_port', '7897')
                 auth_enabled = config['PROXY'].get('auth_enabled', '').lower() == 'true'
                 
                 # 构建代理URL
