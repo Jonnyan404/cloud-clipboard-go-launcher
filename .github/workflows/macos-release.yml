@@ -16,8 +16,8 @@ permissions:
 
 jobs:
   release:
-    # 1. 移除 strategy matrix，只在 macos-latest 上运行
-    runs-on: macos-latest
+    # 关键修改：使用 Intel (x86_64) 架构的运行器
+    runs-on: macos-12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: '3.9'
           
       - name: Build App
         run: |
@@ -57,7 +57,8 @@ jobs:
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
           
-          python setup.py py2app --arch=universal2
+          # 简化打包命令
+          python setup.py py2app
           
           # 显示应用内容以便调试
           ls -la dist/cloud-clipboard-go.app/Contents/
