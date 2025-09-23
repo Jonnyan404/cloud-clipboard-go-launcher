@@ -16,7 +16,17 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - os: macos-12  # Intel Mac，支持 macOS 12.x
+            arch: x86_64
+            runner_arch: intel
+          - os: macos-14  # Apple Silicon Mac
+            arch: aarch64  
+            runner_arch: arm64
+    
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -57,7 +67,7 @@ jobs:
           pyrcc5 -o resource_rc.py resource.qrc
           
           # 使用py2app打包
-          python setup.py py2app
+          python setup.py py2app --arch=${{ matrix.arch }}
           
           # 显示应用内容以便调试
           ls -la dist/cloud-clipboard-go.app/Contents/
@@ -78,13 +88,13 @@ jobs:
             --icon "cloud-clipboard-go.app" 175 190 \
             --hide-extension "cloud-clipboard-go.app" \
             --app-drop-link 425 190 \
-            "cloud-clipboard-go-${{ env.VERSION }}.dmg" \
+            "cloud-clipboard-go-${{ env.VERSION }}-${{ matrix.runner_arch }}.dmg" \
             staging/
             
       - name: Create ZIP backup
         run: |
           cd dist
-          zip -r "cloud-clipboard-go-${{ env.VERSION }}-macOS.zip" "cloud-clipboard-go.app"
+          zip -r "cloud-clipboard-go-${{ env.VERSION }}-macOS-${{ matrix.runner_arch }}.zip" "cloud-clipboard-go.app"
           cd ..
           
       - name: Calculate SHA256
@@ -121,7 +131,7 @@ jobs:
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           files: |
-            cloud-clipboard-go-*.dmg
-            dist/cloud-clipboard-go-*-macOS.zip
+            cloud-clipboard-go-*-*.dmg
+            dist/cloud-clipboard-go-*-macOS-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
