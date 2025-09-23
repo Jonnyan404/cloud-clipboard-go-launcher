@@ -8,7 +8,6 @@ OPTIONS = {
     # 关键修改：禁用参数模拟，这是使用Carbon框架的原因
     'argv_emulation': False,
     'iconfile': 'icon.png',
-    'universal': True ,  # 构建通用二进制文件，支持arm64和x86_64
     'plist': {
         'CFBundleName': 'cloud-clipboard-go',
         'CFBundleDisplayName': 'cloud-clipboard-go',

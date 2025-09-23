@@ -9,7 +9,7 @@ on:
       version:
         description: '版本号 (例如: v1.0)'
         required: true
-        default: 'v4.0'
+        default: 'v6.5'
 
 permissions:
   contents: write
@@ -57,7 +57,7 @@ jobs:
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
           
-          python setup.py py2app
+          python setup.py py2app --arch=universal2
           
           # 显示应用内容以便调试
           ls -la dist/cloud-clipboard-go.app/Contents/
