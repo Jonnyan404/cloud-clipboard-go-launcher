@@ -1,11 +1,21 @@
 from setuptools import setup
 import time
+import platform
 
 APP = ['main.py']
 DATA_FILES = ['icon.png', 'main.ui', 'resource.qrc']
+# 检测当前架构
+current_arch = platform.machine().lower()
+if current_arch in ("x86_64", "amd64"):
+    target_arch = 'x86_64'
+elif current_arch in ("aarch64", "arm64"):
+    target_arch = 'arm64'
+else:
+    target_arch = 'x86_64'  # 默认
 OPTIONS = {
     # 关键修改：禁用参数模拟，这是使用Carbon框架的原因
     'argv_emulation': False,
+    'arch': target_arch, 
     'iconfile': 'icon.png',
     'plist': {
         'CFBundleName': 'cloud-clipboard-go',
