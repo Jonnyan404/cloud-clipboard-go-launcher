@@ -50,8 +50,14 @@ jobs:
           sed -i "" "s/v0.0.0/$VERSION/g" ./setup.py
           
           # 安装依赖
+          # 1. 首先正常安装，这会获取 arm64 版本的依赖
           pip install -r requirements.txt
           pip install py2app
+          
+          # 2. 强制使用 x86_64 架构再次安装，以获取 x86_64 版本的依赖
+          #    py2app 在构建 universal2 包时会需要它们
+          arch -x86_64 python3 -m pip install -r requirements.txt
+          arch -x86_64 python3 -m pip install py2app
           
           # 生成UI文件
           pyuic5 -o ui.py main.ui
