@@ -16,7 +16,6 @@ permissions:
 
 jobs:
   release:
-    # 1. 移除 strategy matrix，只在 macos-latest 上运行
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -34,50 +33,92 @@ jobs:
         with:
           python-version: '3.9'
           
-      - name: Build App
+      - name: Set Version
         run: |
-          # 设置版本号
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
           else
             VERSION=$(git describe --tags)
           fi
-          
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           
-          # 更新应用版本号
-          sed -i "" "s/v0.0.0/$VERSION/g" ./main.py
-          sed -i "" "s/v0.0.0/$VERSION/g" ./setup.py
+      - name: Update Version in Files
+        run: |
+          sed -i "" "s/v0.0.0/${{ env.VERSION }}/g" ./main.py
+          sed -i "" "s/v0.0.0/${{ env.VERSION }}/g" ./setup.py
+
+      - name: Build for x86_64
+        run: |
+          echo "--- Building for x86_64 ---"
+          # 创建一个干净的虚拟环境
+          arch -x86_64 python3 -m venv venv_x86_64
+          source venv_x86_64/bin/activate
           
-          # 安装依赖 (调整顺序)
-          # 1. 首先强制使用 x86_64 架构安装，以获取 x86_64 版本的依赖
-          arch -x86_64 python3 -m pip install -r requirements.txt
-          arch -x86_64 python3 -m pip install py2app
+          # 在 x86_64 环境中安装依赖
+          pip install -r requirements.txt
+          pip install py2app
           
-          # 2. 然后正常安装 arm64 版本。这会覆盖 x86_64 的库，但能确保后续的 pyuic5 命令可以正常运行。
-          #    --ignore-installed 是关键，它会强制重新安装 arm64 版本。
-          pip install --ignore-installed -r requirements.txt
-          pip install --ignore-installed py2app
-          
-          # 生成UI文件 (现在可以找到 arm64 的库了)
+          # 生成 UI 文件
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
           
-          # 3. 使用 --arch=universal2 打包通用应用
-          #    py2app 能够找到两个架构的库并进行打包
-          python setup.py py2app --arch=universal2
+          # 打包 x86_64 应用
+          python setup.py py2app --arch=x86_64
           
-          # 显示应用内容以便调试
-          ls -la dist/cloud-clipboard-go.app/Contents/
-          ls -la dist/cloud-clipboard-go.app/Contents/MacOS/
-          ls -la dist/cloud-clipboard-go.app/Contents/Resources/
+          # 退出虚拟环境
+          deactivate
+          # 重命名输出目录以便区分
+          mv dist dist_x86_64
+
+      - name: Build for arm64
+        run: |
+          echo "--- Building for arm64 ---"
+          # 创建一个干净的虚拟环境
+          python3 -m venv venv_arm64
+          source venv_arm64/bin/activate
           
+          # 在 arm64 环境中安装依赖
+          pip install -r requirements.txt
+          pip install py2app
+          
+          # 生成 UI 文件
+          pyuic5 -o ui.py main.ui
+          pyrcc5 -o resource_rc.py resource.qrc
+          
+          # 打包 arm64 应用
+          python setup.py py2app --arch=arm64
+          
+          # 退出虚拟环境
+          deactivate
+          # 重命名输出目录以便区分
+          mv dist dist_arm64
+
+      - name: Create Universal App
+        run: |
+          echo "--- Creating Universal App ---"
+          # 以 arm64 版本为基础
+          cp -R dist_arm64/cloud-clipboard-go.app dist/
+          
+          # 使用 lipo 合并可执行文件
+          lipo -create \
+            dist_x86_64/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go \
+            dist_arm64/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go \
+            -output dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go
+            
+          # 验证合并结果
+          lipo -info dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go
+          
+          # 复制 x86_64 的库文件到 arm64 的库目录中
+          # rsync -a source/ dest/ 会复制 source 目录的内容到 dest
+          echo "--- Merging Frameworks and Libraries ---"
+          rsync -av --ignore-existing dist_x86_64/cloud-clipboard-go.app/Contents/Frameworks/ dist/cloud-clipboard-go.app/Contents/Frameworks/
+          rsync -av --ignore-existing dist_x86_64/cloud-clipboard-go.app/Contents/Resources/lib/ dist/cloud-clipboard-go.app/Contents/Resources/lib/
+
       - name: Create DMG
         run: |
           mkdir -p staging
           cp -r "dist/cloud-clipboard-go.app" staging/
           
-          # 3. 修改 DMG 文件名，不再包含架构
           create-dmg \
             --volname "cloud-clipboard-go" \
             --volicon "icon.png" \
@@ -93,14 +134,12 @@ jobs:
       - name: Create ZIP backup
         run: |
           cd dist
-          # 4. 修改 ZIP 文件名
           zip -r "cloud-clipboard-go-${{ env.VERSION }}-macOS-universal.zip" "cloud-clipboard-go.app"
           cd ..
           
       - name: Calculate SHA256
         id: sha256
         run: |
-          # 5. 更新 DMG 路径
           DMG_PATH="cloud-clipboard-go-${{ env.VERSION }}-macOS-universal.dmg"
           SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
           echo "sha256_value=$SHA256" >> $GITHUB_OUTPUT
@@ -135,7 +174,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 6. 简化 artifact 下载
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
@@ -144,7 +182,6 @@ jobs:
 
       - name: Update Tap Repository
         run: |
-          # 7. 简化变量读取
           VERSION=$(cat ./artifact/version.txt)
           SHA256=$(cat ./artifact/sha256.txt)
 
@@ -156,7 +193,6 @@ jobs:
 
           mkdir -p Casks
 
-          # 8. 简化 sed 命令
           cat ../homebrew/cloud-clipboard-go.rb.template | \
             sed "s/VERSION_PLACEHOLDER/$VERSION/g" | \
             sed "s/SHA256_PLACEHOLDER/$SHA256/g" > \
