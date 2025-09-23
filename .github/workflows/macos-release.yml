@@ -98,34 +98,24 @@ jobs:
           cd ..
           
       - name: Calculate SHA256
+        id: sha256 # 给步骤一个id
         run: |
-          DMG_PATH="cloud-clipboard-go-${{ env.VERSION }}.dmg"
+          DMG_PATH="cloud-clipboard-go-${{ env.VERSION }}-${{ matrix.runner_arch }}.dmg"
           SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
-          echo "SHA256=$SHA256" >> $GITHUB_ENV
-      
-      - name: Update Homebrew Tap
-        if: success()
+          echo "sha256_value=$SHA256" >> $GITHUB_OUTPUT
+
+      - name: Store SHA256 for Homebrew Tap
         run: |
-          # 克隆tap仓库
-          git clone https://x-access-token:${{ secrets.TAP_TOKEN }}@github.com/jonnyan404/homebrew-tap.git
-          cd homebrew-tap
-          
-          # 创建Casks目录
-          mkdir -p Casks
-          
-          # 使用项目中的模板文件，并替换占位符
-          cat ../homebrew/cloud-clipboard-go.rb.template | \
-            sed "s/VERSION_PLACEHOLDER/${{ env.VERSION }}/g" | \
-            sed "s/SHA256_PLACEHOLDER/${{ env.SHA256 }}/g" > \
-            Casks/cloud-clipboard-go.rb
-          
-          # 提交并推送更改
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "GitHub Actions"
-          git add Casks/cloud-clipboard-go.rb
-          git commit -m "Update cloud-clipboard-go to ${{ env.VERSION }}" || echo "No changes to commit"
-          git push
-          
+          mkdir -p artifact
+          echo "${{ steps.sha256.outputs.sha256_value }}" > artifact/sha256.txt
+          echo "${{ env.VERSION }}" > artifact/version.txt
+
+      - name: Upload SHA256 and Version for ${{ matrix.runner_arch }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifact-info-${{ matrix.runner_arch }}
+          path: artifact/
+      
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
@@ -135,3 +125,60 @@ jobs:
             dist/cloud-clipboard-go-*-macOS-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew-tap:
+    name: Update Homebrew Tap
+    needs: release # 依赖 release 任务
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download Intel Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: artifact-info-intel
+          path: ./intel-artifact
+
+      - name: Download ARM Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: artifact-info-arm64
+          path: ./arm-artifact
+
+      - name: Update Tap Repository
+        run: |
+          # 从下载的工件中读取版本和SHA256
+          VERSION=$(cat ./intel-artifact/version.txt)
+          SHA256_INTEL=$(cat ./intel-artifact/sha256.txt)
+          SHA256_ARM=$(cat ./arm-artifact/sha256.txt)
+
+          echo "Updating to version: $VERSION"
+          echo "Intel SHA256: $SHA256_INTEL"
+          echo "ARM SHA256: $SHA256_ARM"
+
+          # 克隆tap仓库
+          git clone https://x-access-token:${{ secrets.TAP_TOKEN }}@github.com/jonnyan404/homebrew-tap.git
+          cd homebrew-tap
+
+          # 创建Casks目录
+          mkdir -p Casks
+
+          # 使用项目中的模板文件，并替换所有占位符
+          cat ../homebrew/cloud-clipboard-go.rb.template | \
+            sed "s/VERSION_PLACEHOLDER/$VERSION/g" | \
+            sed "s/SHA256_INTEL_PLACEHOLDER/$SHA256_INTEL/g" | \
+            sed "s/SHA256_ARM_PLACEHOLDER/$SHA256_ARM/g" > \
+            Casks/cloud-clipboard-go.rb
+
+          # 提交并推送更改
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+          git add Casks/cloud-clipboard-go.rb
+          # 检查是否有更改需要提交
+          if ! git diff --staged --quiet; then
+            git commit -m "Update cloud-clipboard-go to $VERSION"
+            git push
+          else
+            echo "No changes to commit."
+          fi
