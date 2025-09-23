@@ -55,9 +55,9 @@ jobs:
           pip install py2app
           
           # 2. 强制使用 x86_64 架构再次安装，以获取 x86_64 版本的依赖
-          #    py2app 在构建 universal2 包时会需要它们
-          arch -x86_64 python3 -m pip install -r requirements.txt
-          arch -x86_64 python3 -m pip install py2app
+          #    --ignore-installed 是关键，它会强制重新安装，即使 arm64 版本已存在
+          arch -x86_64 python3 -m pip install --ignore-installed -r requirements.txt
+          arch -x86_64 python3 -m pip install --ignore-installed py2app
           
           # 生成UI文件
           pyuic5 -o ui.py main.ui
