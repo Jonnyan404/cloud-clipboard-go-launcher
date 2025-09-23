@@ -16,17 +16,8 @@ permissions:
 
 jobs:
   release:
-    strategy:
-      matrix:
-        include:
-          - os: macos-12  # Intel Mac，支持 macOS 12.x
-            arch: x86_64
-            runner_arch: intel
-          - os: macos-latest  # Apple Silicon Mac
-            arch: aarch64  
-            runner_arch: arm64
-    
-    runs-on: ${{ matrix.os }}
+    # 1. 移除 strategy matrix，只在 macos-latest 上运行
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,8 +57,8 @@ jobs:
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
           
-          # 使用py2app打包
-          python setup.py py2app --arch=${{ matrix.arch }}
+          # 2. 使用 --arch=universal2 打包通用应用
+          python setup.py py2app --arch=universal2
           
           # 显示应用内容以便调试
           ls -la dist/cloud-clipboard-go.app/Contents/
@@ -79,6 +70,7 @@ jobs:
           mkdir -p staging
           cp -r "dist/cloud-clipboard-go.app" staging/
           
+          # 3. 修改 DMG 文件名，不再包含架构
           create-dmg \
             --volname "cloud-clipboard-go" \
             --volicon "icon.png" \
@@ -88,19 +80,21 @@ jobs:
             --icon "cloud-clipboard-go.app" 175 190 \
             --hide-extension "cloud-clipboard-go.app" \
             --app-drop-link 425 190 \
-            "cloud-clipboard-go-${{ env.VERSION }}-${{ matrix.runner_arch }}.dmg" \
+            "cloud-clipboard-go-${{ env.VERSION }}-macOS-universal.dmg" \
             staging/
             
       - name: Create ZIP backup
         run: |
           cd dist
-          zip -r "cloud-clipboard-go-${{ env.VERSION }}-macOS-${{ matrix.runner_arch }}.zip" "cloud-clipboard-go.app"
+          # 4. 修改 ZIP 文件名
+          zip -r "cloud-clipboard-go-${{ env.VERSION }}-macOS-universal.zip" "cloud-clipboard-go.app"
           cd ..
           
       - name: Calculate SHA256
-        id: sha256 # 给步骤一个id
+        id: sha256
         run: |
-          DMG_PATH="cloud-clipboard-go-${{ env.VERSION }}-${{ matrix.runner_arch }}.dmg"
+          # 5. 更新 DMG 路径
+          DMG_PATH="cloud-clipboard-go-${{ env.VERSION }}-macOS-universal.dmg"
           SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
           echo "sha256_value=$SHA256" >> $GITHUB_OUTPUT
 
@@ -110,10 +104,10 @@ jobs:
           echo "${{ steps.sha256.outputs.sha256_value }}" > artifact/sha256.txt
           echo "${{ env.VERSION }}" > artifact/version.txt
 
-      - name: Upload SHA256 and Version for ${{ matrix.runner_arch }}
+      - name: Upload SHA256 and Version
         uses: actions/upload-artifact@v4
         with:
-          name: artifact-info-${{ matrix.runner_arch }}
+          name: artifact-info
           path: artifact/
       
       - name: Release
@@ -121,61 +115,49 @@ jobs:
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           files: |
-            cloud-clipboard-go-*-*.dmg
-            dist/cloud-clipboard-go-*-macOS-*.zip
+            cloud-clipboard-go-*-universal.dmg
+            dist/cloud-clipboard-go-*-universal.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   update-homebrew-tap:
     name: Update Homebrew Tap
-    needs: release # 依赖 release 任务
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Intel Artifact
+      # 6. 简化 artifact 下载
+      - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
-          name: artifact-info-intel
-          path: ./intel-artifact
-
-      - name: Download ARM Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: artifact-info-arm64
-          path: ./arm-artifact
+          name: artifact-info
+          path: ./artifact
 
       - name: Update Tap Repository
         run: |
-          # 从下载的工件中读取版本和SHA256
-          VERSION=$(cat ./intel-artifact/version.txt)
-          SHA256_INTEL=$(cat ./intel-artifact/sha256.txt)
-          SHA256_ARM=$(cat ./arm-artifact/sha256.txt)
+          # 7. 简化变量读取
+          VERSION=$(cat ./artifact/version.txt)
+          SHA256=$(cat ./artifact/sha256.txt)
 
           echo "Updating to version: $VERSION"
-          echo "Intel SHA256: $SHA256_INTEL"
-          echo "ARM SHA256: $SHA256_ARM"
+          echo "SHA256: $SHA256"
 
-          # 克隆tap仓库
           git clone https://x-access-token:${{ secrets.TAP_TOKEN }}@github.com/jonnyan404/homebrew-tap.git
           cd homebrew-tap
 
-          # 创建Casks目录
           mkdir -p Casks
 
-          # 使用项目中的模板文件，并替换所有占位符
+          # 8. 简化 sed 命令
           cat ../homebrew/cloud-clipboard-go.rb.template | \
             sed "s/VERSION_PLACEHOLDER/$VERSION/g" | \
-            sed "s/SHA256_INTEL_PLACEHOLDER/$SHA256_INTEL/g" | \
-            sed "s/SHA256_ARM_PLACEHOLDER/$SHA256_ARM/g" > \
+            sed "s/SHA256_PLACEHOLDER/$SHA256/g" > \
             Casks/cloud-clipboard-go.rb
 
-          # 提交并推送更改
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "GitHub Actions"
           git add Casks/cloud-clipboard-go.rb
-          # 检查是否有更改需要提交
           if ! git diff --staged --quiet; then
             git commit -m "Update cloud-clipboard-go to $VERSION"
             git push

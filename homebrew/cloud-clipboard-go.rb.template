@@ -1,15 +1,8 @@
 cask "cloud-clipboard-go" do
   version "VERSION_PLACEHOLDER"
-  
-  on_intel do
-    sha256 "SHA256_INTEL_PLACEHOLDER"
-    url "https://github.com/jonnyan404/cloud-clipboard-go-launcher/releases/download/#{version}/cloud-clipboard-go-#{version}-intel.dmg"
-  end
-  
-  on_arm do
-    sha256 "SHA256_ARM_PLACEHOLDER"
-    url "https://github.com/jonnyan404/cloud-clipboard-go-launcher/releases/download/#{version}/cloud-clipboard-go-#{version}-arm64.dmg"
-  end
+  sha256 "SHA256_PLACEHOLDER"
+
+  url "https://github.com/jonnyan404/cloud-clipboard-go-launcher/releases/download/#{version}/cloud-clipboard-go-#{version}-macOS-universal.dmg"
   
   name "cloud-clipboard-go"
   desc "跨平台云剪贴板启动器"
