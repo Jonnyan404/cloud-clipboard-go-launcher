@@ -22,7 +22,7 @@ jobs:
           - os: macos-12  # Intel Mac，支持 macOS 12.x
             arch: x86_64
             runner_arch: intel
-          - os: macos-14  # Apple Silicon Mac
+          - os: macos-latest  # Apple Silicon Mac
             arch: aarch64  
             runner_arch: arm64
     
