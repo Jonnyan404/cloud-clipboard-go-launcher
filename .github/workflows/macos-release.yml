@@ -49,21 +49,22 @@ jobs:
           sed -i "" "s/v0.0.0/$VERSION/g" ./main.py
           sed -i "" "s/v0.0.0/$VERSION/g" ./setup.py
           
-          # 安装依赖
-          # 1. 首先正常安装，这会获取 arm64 版本的依赖
-          pip install -r requirements.txt
-          pip install py2app
+          # 安装依赖 (调整顺序)
+          # 1. 首先强制使用 x86_64 架构安装，以获取 x86_64 版本的依赖
+          arch -x86_64 python3 -m pip install -r requirements.txt
+          arch -x86_64 python3 -m pip install py2app
           
-          # 2. 强制使用 x86_64 架构再次安装，以获取 x86_64 版本的依赖
-          #    --ignore-installed 是关键，它会强制重新安装，即使 arm64 版本已存在
-          arch -x86_64 python3 -m pip install --ignore-installed -r requirements.txt
-          arch -x86_64 python3 -m pip install --ignore-installed py2app
+          # 2. 然后正常安装 arm64 版本。这会覆盖 x86_64 的库，但能确保后续的 pyuic5 命令可以正常运行。
+          #    --ignore-installed 是关键，它会强制重新安装 arm64 版本。
+          pip install --ignore-installed -r requirements.txt
+          pip install --ignore-installed py2app
           
-          # 生成UI文件
+          # 生成UI文件 (现在可以找到 arm64 的库了)
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
           
-          # 2. 使用 --arch=universal2 打包通用应用
+          # 3. 使用 --arch=universal2 打包通用应用
+          #    py2app 能够找到两个架构的库并进行打包
           python setup.py py2app --arch=universal2
           
           # 显示应用内容以便调试
