@@ -10,14 +10,25 @@ on:
       version:
         description: '版本号 (例如: v1.0)'
         required: true
-        default: 'v4.0'
+        default: 'v6.6'
 
 permissions:
   contents: write
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    name: Build (${{ matrix.arch }})
+    # 分架构构建，覆盖 x86_64 (amd64) 与 arm64
+    # ubuntu-24.04-arm = arm64, ubuntu-latest = x86_64
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            os: ubuntu-latest
+          - arch: arm64
+            os: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -46,7 +57,7 @@ jobs:
           
       - name: Build
         run: |
-          VERSION=$(git describe --tags)
+          VERSION=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || format('{0}', github.ref_name) }}
           sed -i "s/v0.0.0/$VERSION/g" ./main.py
           
           pip install -r requirements.txt
@@ -65,19 +76,23 @@ jobs:
             --icon=icon.png \
             -n cloud-clipboard-go \
             ./main.py
+
+          # 校验产物架构
+          file dist/cloud-clipboard-go
           
       - name: Package for Linux
         run: |
-          VERSION=$(git describe --tags)
+          VERSION=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           cd dist
-          tar -czvf "cloud-clipboard-go-$VERSION-Linux.tar.gz" cloud-clipboard-go
+          tar -czvf "cloud-clipboard-go-$VERSION-Linux-${{ matrix.arch }}.tar.gz" cloud-clipboard-go
           cd ..
           
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
+          # 手动触发时按输入版本号附加到对应 release；tag 触发时用触发 tag
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           files: |
-            dist/cloud-clipboard-go
-            dist/cloud-clipboard-go-*-Linux.tar.gz
+            dist/cloud-clipboard-go-*-Linux-${{ matrix.arch }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

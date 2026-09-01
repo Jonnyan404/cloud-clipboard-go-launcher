@@ -9,7 +9,7 @@ on:
       version:
         description: '版本号 (例如: v1.0)'
         required: true
-        default: 'v6.5'
+        default: 'v6.6'
 
 permissions:
   contents: write
@@ -195,6 +195,51 @@ jobs:
           cd ..
           rm -rf dist
 
+      - name: Create per-arch DMGs and ZIPs
+        run: |
+          set -e
+          brew install create-dmg >/dev/null 2>&1 || true
+          VERSION="${{ needs.build.outputs.version }}"
+
+          # 重新定位各架构 app（单架构，未合并）
+          ARM_APP=$(find "$PWD/apps-arm64" -maxdepth 2 -type d -name "*.app" | head -1)
+          X86_APP=$(find "$PWD/apps-x86_64" -maxdepth 2 -type d -name "*.app" | head -1)
+          if [ -z "$ARM_APP" ] && [ -d "$PWD/apps-arm64/Contents" ]; then ARM_APP="$PWD/apps-arm64"; fi
+          if [ -z "$X86_APP" ] && [ -d "$PWD/apps-x86_64/Contents" ]; then X86_APP="$PWD/apps-x86_64"; fi
+
+          echo "arm64 app: $ARM_APP"
+          echo "x86_64 app: $X86_APP"
+
+          make_arch_pkg() {
+            local app="$1"
+            local arch="$2"
+            rm -rf "staging-$arch" "dist-$arch"
+            mkdir -p "staging-$arch" "dist-$arch"
+            cp -R "$app" "staging-$arch/cloud-clipboard-go.app"
+            cp -R "$app" "dist-$arch/cloud-clipboard-go.app"
+
+            create-dmg \
+              --volname "cloud-clipboard-go" \
+              --volicon "icon.png" \
+              --window-pos 200 120 \
+              --window-size 600 400 \
+              --icon-size 100 \
+              --icon "cloud-clipboard-go.app" 175 190 \
+              --hide-extension "cloud-clipboard-go.app" \
+              --app-drop-link 425 190 \
+              "cloud-clipboard-go-$VERSION-macOS-$arch.dmg" \
+              "staging-$arch/" || echo "警告：DMG创建过程遇到非致命错误"
+
+            (cd "dist-$arch" && zip -r "../cloud-clipboard-go-$VERSION-macOS-$arch.zip" cloud-clipboard-go.app)
+
+            rm -rf "staging-$arch" "dist-$arch"
+          }
+
+          make_arch_pkg "$X86_APP" "x86_64"
+          make_arch_pkg "$ARM_APP" "arm64"
+
+          ls -1 cloud-clipboard-go-$VERSION-macOS-*.dmg cloud-clipboard-go-$VERSION-macOS-*.zip
+
       - name: Calculate SHA256
         id: sha256
         run: |
@@ -219,8 +264,12 @@ jobs:
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           files: |
-            cloud-clipboard-go-*-universal.dmg
-            cloud-clipboard-go-*-universal.zip
+            cloud-clipboard-go-*-macOS-universal.dmg
+            cloud-clipboard-go-*-macOS-universal.zip
+            cloud-clipboard-go-*-macOS-x86_64.dmg
+            cloud-clipboard-go-*-macOS-x86_64.zip
+            cloud-clipboard-go-*-macOS-arm64.dmg
+            cloud-clipboard-go-*-macOS-arm64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
