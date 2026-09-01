@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.9'
 
@@ -78,7 +78,7 @@ jobs:
           file dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go
 
       - name: Upload App (${{ matrix.arch }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-${{ matrix.arch }}
           path: dist/cloud-clipboard-go.app
@@ -91,29 +91,46 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Download App (x86_64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: app-x86_64
-          path: apps/x86_64
+          path: apps-x86_64
 
       - name: Download App (arm64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: app-arm64
-          path: apps/arm64
+          path: apps-arm64
 
       - name: Merge with lipo
         run: |
           set -e
+
+          # 不依赖固定的解压布局，用 find 定位 .app 目录
+          ARM_APP=$(find "$PWD/apps-arm64" -maxdepth 2 -type d -name "*.app" | head -1)
+          X86_APP=$(find "$PWD/apps-x86_64" -maxdepth 2 -type d -name "*.app" | head -1)
+          echo "arm64 app: $ARM_APP"
+          echo "x86_64 app: $X86_APP"
+          if [ -z "$ARM_APP" ] || [ -z "$X86_APP" ]; then
+            echo "错误：未找到 .app 目录"
+            echo "--- apps-arm64 ---"; find apps-arm64 -maxdepth 2
+            echo "--- apps-x86_64 ---"; find apps-x86_64 -maxdepth 2
+            exit 1
+          fi
+
+          # 校验两个 app 的主可执行文件架构正确
+          echo "=== 各架构主可执行文件 ==="
+          file "$ARM_APP/Contents/MacOS/cloud-clipboard-go"
+          file "$X86_APP/Contents/MacOS/cloud-clipboard-go"
+
           # 以 arm64 为基础
-          cp -R apps/arm64/cloud-clipboard-go.app apps/merged.app
-          X86=apps/x86_64/cloud-clipboard-go.app
-          MERGED=apps/merged.app
+          MERGED="$PWD/apps/merged.app"
+          cp -R "$ARM_APP" "$MERGED"
 
           # 遍历基础 app 下所有文件，把其中的 Mach-O 二进制与 x86_64 版本用 lipo 合并
           while IFS= read -r f; do
-            rel="${f#${MERGED}/}"
-            other="${X86}/${rel}"
+            rel="${f#"${MERGED}"/}"
+            other="${X86_APP}/${rel}"
             # 只处理两处都存在且确实是 Mach-O 二进制的文件
             if [ -f "$other" ] && file -b "$f" | grep -q "Mach-O"; then
               # 跳过符号链接（避免破坏框架内的软链）
@@ -176,13 +193,13 @@ jobs:
           echo "${{ needs.build.outputs.version }}" > artifact/version.txt
 
       - name: Upload SHA256 and Version
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: artifact-info
           path: artifact/
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           files: |
@@ -200,7 +217,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: artifact-info
           path: ./artifact
