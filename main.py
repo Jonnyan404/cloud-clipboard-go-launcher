@@ -629,8 +629,12 @@ class ThreadDownloader(Thread):
         config = configparser.ConfigParser()
         config.read(config_file)
         
-        proxy_enabled = config['PROXY'].get('enabled', '').lower() == 'true'
-        proxy_type = config['PROXY'].get('type', '')
+        # 配置文件可能还不存在（首次运行时只有退出时才会写入）或缺少 PROXY 段
+        proxy_enabled = False
+        proxy_type = ''
+        if config.has_section('PROXY'):
+            proxy_enabled = config['PROXY'].get('enabled', '').lower() == 'true'
+            proxy_type = config['PROXY'].get('type', '')
         
         # 定义代理设置
         proxies = None

@@ -96,8 +96,12 @@ def get_latest_version(repository, username="jonnyan404"):
         config.read(config_file)
         
         proxies = None
-        proxy_enabled = config['PROXY'].get('enabled', '').lower() == 'true'
-        proxy_type = config['PROXY'].get('type', '')
+        proxy_enabled = False
+        proxy_type = ''
+        # 配置文件可能还不存在（首次运行时只有退出时才会写入）或缺少 PROXY 段
+        if config.has_section('PROXY'):
+            proxy_enabled = config['PROXY'].get('enabled', '').lower() == 'true'
+            proxy_type = config['PROXY'].get('type', '')
         
         # 构建API URL
         api_url = f"https://api.github.com/repos/{username}/{repository}/releases/latest"
