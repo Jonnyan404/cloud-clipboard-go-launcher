@@ -28,8 +28,9 @@
 
 ## 使用方法
 ### Windows 用户
-1. 新建一个目录,下载`cloud-clipboard-go-launcher.exe`到此目录
-2. 双击运行。
+1. 从 [Release 页面](https://github.com/Jonnyan404/cloud-clipboard-go-launcher/releases/latest) 下载 `cloud-clipboard-go-launcher-*.exe`（x86_64 版选择 `cloud-clipboard-go-launcher-x86_64.exe`，arm64 版选择 `cloud-clipboard-go-launcher-arm64.exe`）
+2. 将下载的启动器放入一个目录，双击运行。
+3. 首次运行时，启动器会自动下载核心程序 `cloud-clipboard-go`。
 
 ### macOS 用户
 - 方式一
@@ -59,16 +60,34 @@ brew upgrade --cask cloud-clipboard-go
 从 [Releases 页面](https://github.com/jonnyan404/cloud-clipboard-go-launcher/releases/latest) 下载最新的 `.dmg` 文件，然后拖放到应用程序文件夹。
 
 ### Linux 用户
-
-同上，区别在于文件名换成 `cloud-clipboard-go-launcher`（即发布包里的启动器二进制）。
+1. 从 [Release 页面](https://github.com/Jonnyan404/cloud-clipboard-go-launcher/releases/latest) 下载对应的 `cloud-clipboard-go-*-Linux-<架构>.tar.gz`（x86_64 / arm64）。
+2. 解压后得到启动器二进制 `cloud-clipboard-go-launcher`，放入一个目录：
+   ```bash
+   tar -xzf cloud-clipboard-go-*-Linux-x86_64.tar.gz
+   chmod +x cloud-clipboard-go-launcher
+   ./cloud-clipboard-go-launcher
+   ```
+3. 首次运行时，启动器会自动下载核心程序 `cloud-clipboard-go`。
 
 ## 打包流程
+> 启动器二进制统一命名为 `cloud-clipboard-go-launcher`；下载的核心程序则为 `cloud-clipboard-go`，两者不会互相覆盖。
+
+### Linux / Windows
 ```bash
 pip install -r requirements.txt
-pyside6-uic -o ui.py main.ui
-pyside6-rcc -o resource_rc.py resource.qrc
+pyside6-uic main.ui -o ui.py
+pyside6-rcc resource.qrc -o resource_rc.py
 pyinstaller --noconsole -F ./main.py --icon icon.png -n cloud-clipboard-go-launcher
 ```
+
+### macOS
+```bash
+pip install -r requirements.txt
+pyside6-uic main.ui -o ui.py
+pyside6-rcc resource.qrc -o resource_rc.py
+pyinstaller --windowed --noconfirm --clean --icon icon.png --name cloud-clipboard-go-launcher main.py
+```
+macOS 的发布 DMG（`cloud-clipboard-go-<版本>-macOS-universal.dmg`）内为 `cloud-clipboard-go.app`，用 create-dmg 及 lipo 合并 universal2 生成。
 
 # 致谢
 
