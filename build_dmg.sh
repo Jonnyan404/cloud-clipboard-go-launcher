@@ -36,7 +36,7 @@ pyside6-uic main.ui -o ui.py
 pyside6-rcc resource.qrc -o resource_rc.py
 
 # ---------------------------------------------------------------------------
-# 通用：在指定的 Python 解释器下创建 venv、装依赖、并跑 py2app
+# 通用：在指定的 Python 解释器下创建 venv、装依赖、并跑 PyInstaller
 #   用法: build_one <interpreter> <output_dir> <arch> <label>
 # ---------------------------------------------------------------------------
 build_one() {
@@ -54,10 +54,13 @@ build_one() {
   echo "[$label] 安装依赖..."
   pip install --upgrade pip wheel
   pip install -r requirements.txt
-  pip install py2app
 
-  echo "[$label] 打包应用 (--arch=$arch)..."
-  python setup.py py2app --no-strip --no-chdir --arch="$arch"
+  echo "[$label] 打包应用 (PyInstaller, arch=$arch)..."
+  python -m PyInstaller --windowed --noconfirm --clean \
+    --name cloud-clipboard-go \
+    --icon icon.png \
+    --add-data "icon.png:." \
+    main.py
 
   echo "[$label] 校验主可执行文件架构..."
   file "dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go"
@@ -158,10 +161,13 @@ else
   pip install --upgrade pip
   pip install wheel
   pip install -r requirements.txt
-  pip install py2app
 
-  echo "打包应用 (--arch=$NATIVE_ARCH)..."
-  python setup.py py2app --no-strip --no-chdir --arch="$NATIVE_ARCH"
+  echo "打包应用 (PyInstaller, arch=$NATIVE_ARCH)..."
+  python -m PyInstaller --windowed --noconfirm --clean \
+    --name cloud-clipboard-go \
+    --icon icon.png \
+    --add-data "icon.png:." \
+    main.py
 
   echo "校验主可执行文件架构..."
   file "dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go"

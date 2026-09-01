@@ -82,7 +82,9 @@ def get_ips():
 
 
 def system_related_secret():
-    return socket.gethostname() + os.getcwd() + str(get_ips()) + str(os.path.getctime(sys.argv[0]))
+    # 用 sys.executable 而不是 sys.argv[0]：PyInstaller 打包后 argv[0] 是相对路径，
+    # 且 CWD 会被切换，导致 getctime 找不到文件而崩溃
+    return socket.gethostname() + os.getcwd() + str(get_ips()) + str(os.path.getctime(sys.executable))
 
 
 def get_latest_version(repository, username="jonnyan404"):
