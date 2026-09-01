@@ -109,9 +109,16 @@ jobs:
           # 不依赖固定的解压布局，用 find 定位 .app 目录
           ARM_APP=$(find "$PWD/apps-arm64" -maxdepth 2 -type d -name "*.app" | head -1)
           X86_APP=$(find "$PWD/apps-x86_64" -maxdepth 2 -type d -name "*.app" | head -1)
+          # upload-artifact 可能只保留了 .app 的内容(Contents/...)，此时把下载目录本身当作 app 包
+          if [ -z "$ARM_APP" ] && [ -d "$PWD/apps-arm64/Contents" ]; then
+            ARM_APP="$PWD/apps-arm64"
+          fi
+          if [ -z "$X86_APP" ] && [ -d "$PWD/apps-x86_64/Contents" ]; then
+            X86_APP="$PWD/apps-x86_64"
+          fi
           echo "arm64 app: $ARM_APP"
           echo "x86_64 app: $X86_APP"
-          if [ -z "$ARM_APP" ] || [ -z "$X86_APP" ]; then
+          if [ -z "$ARM_APP" ] || [ -z "$X86_APP" ] || [ ! -f "$ARM_APP/Contents/MacOS/cloud-clipboard-go" ] || [ ! -f "$X86_APP/Contents/MacOS/cloud-clipboard-go" ]; then
             echo "错误：未找到 .app 目录"
             echo "--- apps-arm64 ---"; find apps-arm64 -maxdepth 2
             echo "--- apps-x86_64 ---"; find apps-x86_64 -maxdepth 2
