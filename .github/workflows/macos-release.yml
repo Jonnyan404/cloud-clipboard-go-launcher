@@ -93,6 +93,11 @@ jobs:
     # 在 Apple Silicon runner 上合并，两个 slice 都能处理
     runs-on: macos-15
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Download App (x86_64)
         uses: actions/download-artifact@v8
         with:
