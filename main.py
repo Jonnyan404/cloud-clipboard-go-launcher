@@ -704,11 +704,24 @@ class ThreadDownloader(Thread):
             with open(temp_file, "wb") as f:
                 f.write(res.content)
             
-            # 解压逻辑保持不变
+            # 解压核心程序为 filename（cloud-clipboard-go；启动器二进制为
+            # cloud-clipboard-go-launcher，两者不会重名覆盖）
             if download_filename.endswith('.tar.gz'):
                 import tarfile
                 with tarfile.open(temp_file, "r:gz") as tar:
-                    tar.extract(base_filename, ".")
+                    # 定位压缩包内的核心程序成员（不一定是根路径）
+                    member = None
+                    for m in tar.getmembers():
+                        if not m.isfile():
+                            continue
+                        if os.path.basename(m.name) == base_filename:
+                            member = m
+                            break
+                    if member is None:
+                        raise FileNotFoundError(f"压缩包内未找到 {base_filename}")
+                    # 直接以目标名写盘，避免先写入临时文件再改名
+                    with tar.extractfile(member) as src, open(f"./{filename}", "wb") as dst:
+                        dst.write(src.read())
             elif download_filename.endswith('.zip'):
                 import zipfile
                 with zipfile.ZipFile(temp_file, 'r') as zip_ref:

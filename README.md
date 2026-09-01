@@ -60,14 +60,14 @@ brew upgrade --cask cloud-clipboard-go
 
 ### Linux 用户
 
-同上，区别在于文件名换成 `cloud-clipboard-go-launcher`。
+同上，区别在于文件名换成 `cloud-clipboard-go-launcher`（即发布包里的启动器二进制）。
 
 ## 打包流程
 ```bash
 pip install -r requirements.txt
-pyuic5 -o ui.py main.ui
-pyrcc5 -o resource_rc.py resource.qrc 
-pyinstaller --noconsole -F ./main.py --icon icon.png -n cloud-clipboard-go-launcher.exe
+pyside6-uic -o ui.py main.ui
+pyside6-rcc -o resource_rc.py resource.qrc
+pyinstaller --noconsole -F ./main.py --icon icon.png -n cloud-clipboard-go-launcher
 ```
 
 # 致谢

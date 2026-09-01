@@ -57,13 +57,13 @@ build_one() {
 
   echo "[$label] 打包应用 (PyInstaller, arch=$arch)..."
   python -m PyInstaller --windowed --noconfirm --clean \
-    --name cloud-clipboard-go \
+    --name cloud-clipboard-go-launcher \
     --icon icon.png \
     --add-data "icon.png:." \
     main.py
 
   echo "[$label] 校验主可执行文件架构..."
-  file "dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go"
+  file "dist/cloud-clipboard-go-launcher.app/Contents/MacOS/cloud-clipboard-go-launcher"
 
   deactivate
 }
@@ -95,7 +95,7 @@ merge_universal() {
   done < <(find "$OUT" -type f)
 
   echo "=== 校验合并后的主可执行文件 ==="
-  lipo -info "$OUT/Contents/MacOS/cloud-clipboard-go"
+  lipo -info "$OUT/Contents/MacOS/cloud-clipboard-go-launcher"
 }
 
 # ---------------------------------------------------------------------------
@@ -108,7 +108,8 @@ make_dmg() {
 
   echo "创建DMG安装包 ($dmg)..."
   mkdir -p staging
-  cp -r "$app" staging/
+  # 以固定名称 cloud-clipboard-go.app 打包（与 homebrew cask 的 app 名称一致）
+  cp -r "$app" staging/cloud-clipboard-go.app
 
   create-dmg \
     --volname "cloud-clipboard-go" \
@@ -135,19 +136,19 @@ if [ "$can_universal" = "1" ]; then
   echo "x86_64 解释器(经 Rosetta): $X86_INTERP"
 
   build_one "$ARM_INTERP" "$PWD/venv-arm64" "arm64" "arm64/Apple-Silicon"
-  mv dist/cloud-clipboard-go.app dist/cloud-clipboard-go-arm64.app
+  mv dist/cloud-clipboard-go-launcher.app dist/cloud-clipboard-go-launcher-arm64.app
 
   build_one "arch -x86_64 $ARM_INTERP" "$PWD/venv-x86_64" "x86_64" "x86_64/Intel"
-  mv dist/cloud-clipboard-go.app dist/cloud-clipboard-go-x86_64.app
+  mv dist/cloud-clipboard-go-launcher.app dist/cloud-clipboard-go-launcher-x86_64.app
 
   # 合并
-  merge_universal "$PWD/dist/cloud-clipboard-go-arm64.app" \
-                  "$PWD/dist/cloud-clipboard-go-x86_64.app" \
-                  "$PWD/dist/cloud-clipboard-go.app"
+  merge_universal "$PWD/dist/cloud-clipboard-go-launcher-arm64.app" \
+                  "$PWD/dist/cloud-clipboard-go-launcher-x86_64.app" \
+                  "$PWD/dist/cloud-clipboard-go-launcher.app"
   DMG_NAME="cloud-clipboard-go-安装包-macOS-universal.dmg"
 
   echo "清理各架构临时 app..."
-  rm -rf "$PWD/dist/cloud-clipboard-go-arm64.app" "$PWD/dist/cloud-clipboard-go-x86_64.app"
+  rm -rf "$PWD/dist/cloud-clipboard-go-launcher-arm64.app" "$PWD/dist/cloud-clipboard-go-launcher-x86_64.app"
 
 # ---------------------------------------------------------------------------
 # B) 单架构回退 (Intel 或 Apple Silicon)
@@ -164,13 +165,13 @@ else
 
   echo "打包应用 (PyInstaller, arch=$NATIVE_ARCH)..."
   python -m PyInstaller --windowed --noconfirm --clean \
-    --name cloud-clipboard-go \
+    --name cloud-clipboard-go-launcher \
     --icon icon.png \
     --add-data "icon.png:." \
     main.py
 
   echo "校验主可执行文件架构..."
-  file "dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go"
+  file "dist/cloud-clipboard-go-launcher.app/Contents/MacOS/cloud-clipboard-go-launcher"
 
   deactivate
 

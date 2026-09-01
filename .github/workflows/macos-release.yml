@@ -73,18 +73,19 @@ jobs:
           pyside6-rcc resource.qrc -o resource_rc.py
 
           # 用 PyInstaller 打包 .app（--windowed 生成 macOS .app bundle，目录模式）
+          # 启动器可执行文件命名为 cloud-clipboard-go-launcher，避免与下载的核心程序 cloud-clipboard-go 重名
           # PyInstaller 会自动收集 PySide6/Qt 并剔除未用模块，体积比 py2app 更小且无需手动裁剪
           pyinstaller --windowed --noconfirm --clean \
-            --name cloud-clipboard-go \
+            --name cloud-clipboard-go-launcher \
             --icon icon.png \
             --add-data "icon.png:." \
             main.py
 
-          # 校验主可执行文件的架构
-          file dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go
+          # 校验主可执行文件架构
+          file dist/cloud-clipboard-go-launcher.app/Contents/MacOS/cloud-clipboard-go-launcher
 
           # 用 tar 打包以完整保留文件权限（upload-artifact 的 zip 会丢失执行权限位）
-          tar -czf app-${{ matrix.arch }}.tar.gz -C dist cloud-clipboard-go.app
+          tar -czf app-${{ matrix.arch }}.tar.gz -C dist cloud-clipboard-go-launcher.app
 
       - name: Upload App (${{ matrix.arch }})
         uses: actions/upload-artifact@v7
@@ -109,7 +110,7 @@ jobs:
       - name: Download App (x86_64)
         uses: actions/download-artifact@v8
         with:
-          name: app-x86_64
+          name: app-x86_64.tar.gz
           path: apps-x86_64
 
       - name: Extract App (x86_64)
@@ -121,7 +122,7 @@ jobs:
       - name: Download App (arm64)
         uses: actions/download-artifact@v8
         with:
-          name: app-arm64
+          name: app-arm64.tar.gz
           path: apps-arm64
 
       - name: Extract App (arm64)
@@ -146,7 +147,7 @@ jobs:
           fi
           echo "arm64 app: $ARM_APP"
           echo "x86_64 app: $X86_APP"
-          if [ -z "$ARM_APP" ] || [ -z "$X86_APP" ] || [ ! -f "$ARM_APP/Contents/MacOS/cloud-clipboard-go" ] || [ ! -f "$X86_APP/Contents/MacOS/cloud-clipboard-go" ]; then
+          if [ -z "$ARM_APP" ] || [ -z "$X86_APP" ] || [ ! -f "$ARM_APP/Contents/MacOS/cloud-clipboard-go-launcher" ] || [ ! -f "$X86_APP/Contents/MacOS/cloud-clipboard-go-launcher" ]; then
             echo "错误：未找到 .app 目录"
             echo "--- apps-arm64 ---"; find apps-arm64 -maxdepth 2
             echo "--- apps-x86_64 ---"; find apps-x86_64 -maxdepth 2
@@ -155,8 +156,8 @@ jobs:
 
           # 校验两个 app 的主可执行文件架构正确
           echo "=== 各架构主可执行文件 ==="
-          file "$ARM_APP/Contents/MacOS/cloud-clipboard-go"
-          file "$X86_APP/Contents/MacOS/cloud-clipboard-go"
+          file "$ARM_APP/Contents/MacOS/cloud-clipboard-go-launcher"
+          file "$X86_APP/Contents/MacOS/cloud-clipboard-go-launcher"
 
           # 以 arm64 为基础
           MERGED="$PWD/apps/merged.app"
@@ -185,8 +186,8 @@ jobs:
           done < <(find "$MERGED" -type f)
 
           echo "=== 校验合并后的主可执行文件 ==="
-          lipo -archs "$MERGED/Contents/MacOS/cloud-clipboard-go"
-          lipo -info "$MERGED/Contents/MacOS/cloud-clipboard-go"
+          lipo -archs "$MERGED/Contents/MacOS/cloud-clipboard-go-launcher"
+          lipo -info "$MERGED/Contents/MacOS/cloud-clipboard-go-launcher"
 
       - name: Create DMG
         run: |

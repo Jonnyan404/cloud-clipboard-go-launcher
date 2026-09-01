@@ -68,23 +68,24 @@ jobs:
           pyside6-rcc resource.qrc -o resource_rc.py
           
           # 构建可执行文件 - 添加所有缺失的库
+          # 启动器二进制命名为 cloud-clipboard-go-launcher，避免与下载的核心程序 cloud-clipboard-go 重名
           pyinstaller --noconsole -F \
             --add-data="icon.png:." \
             --hidden-import=PySide6.QtCore \
             --hidden-import=PySide6.QtGui \
             --hidden-import=PySide6.QtWidgets \
             --icon=icon.png \
-            -n cloud-clipboard-go \
+            -n cloud-clipboard-go-launcher \
             ./main.py
 
           # 校验产物架构
-          file dist/cloud-clipboard-go
+          file dist/cloud-clipboard-go-launcher
           
       - name: Package for Linux
         run: |
           VERSION=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           cd dist
-          tar -czvf "cloud-clipboard-go-$VERSION-Linux-${{ matrix.arch }}.tar.gz" cloud-clipboard-go
+          tar -czvf "cloud-clipboard-go-$VERSION-Linux-${{ matrix.arch }}.tar.gz" cloud-clipboard-go-launcher
           cd ..
           
       - name: Release
