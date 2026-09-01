@@ -4,6 +4,9 @@
 # 在仅单架构的机器(如普通 Intel 或未装 Rosetta 的机器)上，自动回退为只构建本机架构的单架构安装包
 set -e  # 遇到错误立即停止
 
+# 保证构建产物最低支持 macOS 12.x（用户机器为 macOS 12）
+export MACOSX_DEPLOYMENT_TARGET=12.0
+
 NATIVE_ARCH="$(uname -m)"
 echo "本机原生架构: $NATIVE_ARCH"
 

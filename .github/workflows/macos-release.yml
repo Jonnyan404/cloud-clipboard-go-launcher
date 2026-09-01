@@ -20,6 +20,9 @@ jobs:
     # 用两个不同架构的 runner 分别构建单架构 app
     # macos-15-intel = Intel (x86_64), macos-15 = Apple Silicon (arm64)
     runs-on: ${{ matrix.os }}
+    env:
+      # 保证构建产物最低支持 macOS 12.x（用户机器为 macOS 12）
+      MACOSX_DEPLOYMENT_TARGET: "12.0"
     outputs:
       version: ${{ steps.version.outputs.version }}
     strategy:
@@ -132,6 +135,7 @@ jobs:
 
           # 以 arm64 为基础
           MERGED="$PWD/apps/merged.app"
+          mkdir -p "$PWD/apps"
           cp -R "$ARM_APP" "$MERGED"
 
           # 遍历基础 app 下所有文件，把其中的 Mach-O 二进制与 x86_64 版本用 lipo 合并
@@ -163,7 +167,7 @@ jobs:
         run: |
           brew install create-dmg >/dev/null 2>&1 || true
           mkdir -p staging
-          cp -R apps/merged.app staging/
+          cp -R apps/merged.app staging/cloud-clipboard-go.app
 
           create-dmg \
             --volname "cloud-clipboard-go" \
@@ -180,7 +184,7 @@ jobs:
       - name: Create ZIP backup
         run: |
           mkdir -p dist
-          cp -R apps/merged.app dist/
+          cp -R apps/merged.app dist/cloud-clipboard-go.app
           cd dist
           zip -r "../cloud-clipboard-go-${{ needs.build.outputs.version }}-macOS-universal.zip" cloud-clipboard-go.app
           cd ..
