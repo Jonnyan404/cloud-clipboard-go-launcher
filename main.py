@@ -7,9 +7,9 @@ import platform
 import time
 
 import requests
-from PyQt5.QtCore import pyqtSlot, Qt, QSize
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QGroupBox, QRadioButton, QTabWidget, QWidget,QCheckBox, QComboBox, QDialog,QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,QLineEdit,QApplication, QMainWindow, QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QLineEdit
+from PySide6.QtCore import Slot, Qt, QSize
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QGroupBox, QRadioButton, QTabWidget, QWidget,QCheckBox, QComboBox, QDialog,QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,QLineEdit,QApplication, QMainWindow, QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QLineEdit
 from configparser import ConfigParser 
 from ui import Ui_MainWindow
 from utils import get_ips, system_related_secret, get_latest_version
@@ -188,7 +188,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def update_config(self, key, value):
         self.config['DEFAULT'][key] = value
 
-    @pyqtSlot()
+    @Slot()
     def on_startBtn_clicked(self):
         if self.gofile is None:
             if os.path.exists(f"./{filename}"):
@@ -217,14 +217,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.statusbar.showMessage("服务已终止")
             self.startBtn.setText("启动")
 
-    @pyqtSlot()
+    @Slot()
     def on_fileChooseBtn_clicked(self):
         path, _ = QFileDialog.getOpenFileName(self, "选择配置文件", ".", "配置文件 (*.json *.yaml *.yml *.conf);;所有文件 (*)")
         if path:
             self.fileLineEdit.setText(path)
             self.statusbar.showMessage(f"已选择：{path}")
 
-    @pyqtSlot()
+    @Slot()
     def on_videoChooseBtn_clicked(self):      
         # 获取当前密码
         current_password = self.videoLineEdit.text()
@@ -252,11 +252,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.videoChooseBtn.setText("查看密码")
             self.statusbar.showMessage("密码已隐藏")
         
-    @pyqtSlot()
+    @Slot()
     def on_aboutBtn_clicked(self):
         self.aboutMsgBox.show()
 
-    @pyqtSlot()
+    @Slot()
     def on_updateBtn_clicked(self):
         self.statusbar.showMessage(f"正在请求 GitHub 服务器查询当前最新版本 ...")
         self.config.read(config_file)
@@ -400,9 +400,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         close_btn.clicked.connect(close_dialog)
         
         # 显示对话框
-        dialog.exec_()
+        dialog.exec()
 
-    @pyqtSlot()
+    @Slot()
     def on_openWebBtn_clicked(self):
         """打开网页版界面"""
         import webbrowser
@@ -420,7 +420,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 打开默认浏览器
         webbrowser.open(url)
 
-    @pyqtSlot()
+    @Slot()
     def on_proxySettingsBtn_clicked(self):
         """打开代理设置对话框，支持传统HTTP/SOCKS代理和认证"""
         
@@ -610,8 +610,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         dialog.finished.connect(actual_cleanup_and_log)
         
         # 显示对话框
-        dialog.exec_()
-        # 当 exec_() 返回后, actual_cleanup_and_log 会被调用过一次,
+        dialog.exec()
+        # 当 exec() 返回后, actual_cleanup_and_log 会被调用过一次,
         # self.proxy_dialog_active 会是 False, _last_proxy_dialog_close_time 会被更新。
 
 class ThreadDownloader(Thread):
@@ -776,4 +776,4 @@ if __name__ == "__main__":
             print(f"设置macOS图标失败: {e}")
     Dialog = MainWindow()
     Dialog.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

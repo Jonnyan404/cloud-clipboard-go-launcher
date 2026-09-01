@@ -46,8 +46,8 @@ jobs:
           $VERSION = if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { "${{ github.event.inputs.version }}" } else { "${{ github.ref_name }}" }
           (Get-Content -Path ./main.py) -replace 'v0.0.0', $VERSION | Set-Content -Path ./main.py
           pip install -r requirements.txt
-          pyuic5 -o ui.py main.ui
-          pyrcc5 -o resource_rc.py resource.qrc
+          pyside6-uic main.ui -o ui.py
+          pyside6-rcc resource.qrc -o resource_rc.py
           pip install pyinstaller
           pyinstaller --noconsole -F ./main.py --icon icon.png -n cloud-clipboard-go-launcher-${{ matrix.arch }}.exe
           

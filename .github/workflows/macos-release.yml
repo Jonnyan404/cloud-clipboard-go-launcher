@@ -71,8 +71,8 @@ jobs:
           sed -i "" "s/v0.0.0/$VERSION/g" ./setup.py
 
           # 生成 UI 文件
-          pyuic5 -o ui.py main.ui
-          pyrcc5 -o resource_rc.py resource.qrc
+          pyside6-uic main.ui -o ui.py
+          pyside6-rcc resource.qrc -o resource_rc.py
 
           # 关键：显式指定当前运行器对应的架构
           python setup.py py2app --no-strip --no-chdir --arch=${{ matrix.arch }}

@@ -19,7 +19,7 @@ OPTIONS = {
         'LSApplicationCategoryType': 'public.app-category.utilities',
         'BuildTimestamp': str(int(time.time()))
     },
-    'packages': ['PyQt5'],
+    'packages': ['PySide6'],
 }
 
 setup(

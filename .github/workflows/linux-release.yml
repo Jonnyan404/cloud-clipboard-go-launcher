@@ -61,18 +61,18 @@ jobs:
           sed -i "s/v0.0.0/$VERSION/g" ./main.py
           
           pip install -r requirements.txt
-          pip install pyinstaller pyqt5
+          pip install pyinstaller
           
           # 生成必要的 UI 文件
-          pyuic5 -o ui.py main.ui
-          pyrcc5 -o resource_rc.py resource.qrc
+          pyside6-uic main.ui -o ui.py
+          pyside6-rcc resource.qrc -o resource_rc.py
           
           # 构建可执行文件 - 添加所有缺失的库
           pyinstaller --noconsole -F \
             --add-data="icon.png:." \
-            --hidden-import=PyQt5.QtCore \
-            --hidden-import=PyQt5.QtGui \
-            --hidden-import=PyQt5.QtWidgets \
+            --hidden-import=PySide6.QtCore \
+            --hidden-import=PySide6.QtGui \
+            --hidden-import=PySide6.QtWidgets \
             --icon=icon.png \
             -n cloud-clipboard-go \
             ./main.py

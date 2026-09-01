@@ -32,8 +32,8 @@ rm -rf build/ dist/* ./*.dmg staging/
 rm -rf venv/ venv-arm64/ venv-x86_64/
 
 echo "生成UI文件..."
-pyuic5 -o ui.py main.ui
-pyrcc5 -o resource_rc.py resource.qrc
+pyside6-uic main.ui -o ui.py
+pyside6-rcc resource.qrc -o resource_rc.py
 
 # ---------------------------------------------------------------------------
 # 通用：在指定的 Python 解释器下创建 venv、装依赖、并跑 py2app
