@@ -15,62 +15,132 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    # 关键修改：使用 Intel (x86_64) 架构的运行器
-    runs-on: macos-12
+  build:
+    name: Build (${{ matrix.arch }})
+    # 用两个不同架构的 runner 分别构建单架构 app
+    # macos-13 = Intel (x86_64), macos-15 = Apple Silicon (arm64)
+    runs-on: ${{ matrix.os }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            os: macos-13
+          - arch: arm64
+            os: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
-      - name: Install dependencies
-        run: |
-          brew update
-          brew install create-dmg
-          
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
-          
-      - name: Build App
+
+      - name: Install dependencies
         run: |
-          # 设置版本号
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install py2app
+
+      - name: Resolve version
+        id: version
+        run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
           else
             VERSION=$(git describe --tags)
           fi
-          
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build App (${{ matrix.arch }})
+        run: |
+          set -e
+
+          VERSION="${{ steps.version.outputs.version }}"
+
           # 更新应用版本号
           sed -i "" "s/v0.0.0/$VERSION/g" ./main.py
           sed -i "" "s/v0.0.0/$VERSION/g" ./setup.py
-          
-          # 安装依赖
-          pip install -r requirements.txt
-          pip install py2app
-          
-          # 生成UI文件
+
+          # 生成 UI 文件
           pyuic5 -o ui.py main.ui
           pyrcc5 -o resource_rc.py resource.qrc
-          
-          # 简化打包命令
-          python setup.py py2app
-          
-          # 显示应用内容以便调试
-          ls -la dist/cloud-clipboard-go.app/Contents/
-          ls -la dist/cloud-clipboard-go.app/Contents/MacOS/
-          ls -la dist/cloud-clipboard-go.app/Contents/Resources/
-          
+
+          # 关键：显式指定当前运行器对应的架构
+          python setup.py py2app --no-strip --no-chdir --arch=${{ matrix.arch }}
+
+          # 校验主可执行文件的架构
+          file dist/cloud-clipboard-go.app/Contents/MacOS/cloud-clipboard-go
+
+      - name: Upload App (${{ matrix.arch }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.arch }}
+          path: dist/cloud-clipboard-go.app
+          retention-days: 1
+
+  merge:
+    name: Create Universal App
+    needs: [build]
+    # 在 Apple Silicon runner 上合并，两个 slice 都能处理
+    runs-on: macos-15
+    steps:
+      - name: Download App (x86_64)
+        uses: actions/download-artifact@v4
+        with:
+          name: app-x86_64
+          path: apps/x86_64
+
+      - name: Download App (arm64)
+        uses: actions/download-artifact@v4
+        with:
+          name: app-arm64
+          path: apps/arm64
+
+      - name: Merge with lipo
+        run: |
+          set -e
+          # 以 arm64 为基础
+          cp -R apps/arm64/cloud-clipboard-go.app apps/merged.app
+          X86=apps/x86_64/cloud-clipboard-go.app
+          MERGED=apps/merged.app
+
+          # 遍历基础 app 下所有文件，把其中的 Mach-O 二进制与 x86_64 版本用 lipo 合并
+          while IFS= read -r f; do
+            rel="${f#${MERGED}/}"
+            other="${X86}/${rel}"
+            # 只处理两处都存在且确实是 Mach-O 二进制的文件
+            if [ -f "$other" ] && file -b "$f" | grep -q "Mach-O"; then
+              # 跳过符号链接（避免破坏框架内的软链）
+              if [ -L "$f" ]; then
+                continue
+              fi
+              if file -b "$f" | grep -q "universal"; then
+                echo "已是最新: $rel"
+              else
+                lipo -create "$f" "$other" -output "$f"
+                echo "合并: $rel"
+              fi
+            else
+              echo "跳过: $rel"
+            fi
+          done < <(find "$MERGED" -type f)
+
+          echo "=== 校验合并后的主可执行文件 ==="
+          lipo -archs "$MERGED/Contents/MacOS/cloud-clipboard-go"
+          lipo -info "$MERGED/Contents/MacOS/cloud-clipboard-go"
+
       - name: Create DMG
         run: |
+          brew install create-dmg >/dev/null 2>&1 || true
           mkdir -p staging
-          cp -r "dist/cloud-clipboard-go.app" staging/
-          
-          # 3. 修改 DMG 文件名，不再包含架构
+          cp -R apps/merged.app staging/
+
           create-dmg \
             --volname "cloud-clipboard-go" \
             --volicon "icon.png" \
@@ -80,55 +150,55 @@ jobs:
             --icon "cloud-clipboard-go.app" 175 190 \
             --hide-extension "cloud-clipboard-go.app" \
             --app-drop-link 425 190 \
-            "cloud-clipboard-go-${{ env.VERSION }}-macOS-universal.dmg" \
+            "cloud-clipboard-go-${{ needs.build.outputs.version }}-macOS-universal.dmg" \
             staging/
-            
+
       - name: Create ZIP backup
         run: |
+          mkdir -p dist
+          cp -R apps/merged.app dist/
           cd dist
-          # 4. 修改 ZIP 文件名
-          zip -r "cloud-clipboard-go-${{ env.VERSION }}-macOS-universal.zip" "cloud-clipboard-go.app"
+          zip -r "../cloud-clipboard-go-${{ needs.build.outputs.version }}-macOS-universal.zip" cloud-clipboard-go.app
           cd ..
-          
+          rm -rf dist
+
       - name: Calculate SHA256
         id: sha256
         run: |
-          # 5. 更新 DMG 路径
-          DMG_PATH="cloud-clipboard-go-${{ env.VERSION }}-macOS-universal.dmg"
+          DMG_PATH="cloud-clipboard-go-${{ needs.build.outputs.version }}-macOS-universal.dmg"
           SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
-          echo "sha256_value=$SHA256" >> $GITHUB_OUTPUT
+          echo "sha256_value=$SHA256" >> "$GITHUB_OUTPUT"
 
       - name: Store SHA256 for Homebrew Tap
         run: |
           mkdir -p artifact
           echo "${{ steps.sha256.outputs.sha256_value }}" > artifact/sha256.txt
-          echo "${{ env.VERSION }}" > artifact/version.txt
+          echo "${{ needs.build.outputs.version }}" > artifact/version.txt
 
       - name: Upload SHA256 and Version
         uses: actions/upload-artifact@v4
         with:
           name: artifact-info
           path: artifact/
-      
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
           files: |
             cloud-clipboard-go-*-universal.dmg
-            dist/cloud-clipboard-go-*-universal.zip
+            cloud-clipboard-go-*-universal.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   update-homebrew-tap:
     name: Update Homebrew Tap
-    needs: release
+    needs: [merge]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 6. 简化 artifact 下载
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
@@ -137,7 +207,6 @@ jobs:
 
       - name: Update Tap Repository
         run: |
-          # 7. 简化变量读取
           VERSION=$(cat ./artifact/version.txt)
           SHA256=$(cat ./artifact/sha256.txt)
 
@@ -149,7 +218,6 @@ jobs:
 
           mkdir -p Casks
 
-          # 8. 简化 sed 命令
           cat ../homebrew/cloud-clipboard-go.rb.template | \
             sed "s/VERSION_PLACEHOLDER/$VERSION/g" | \
             sed "s/SHA256_PLACEHOLDER/$SHA256/g" > \
